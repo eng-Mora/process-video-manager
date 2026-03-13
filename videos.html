@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎬 إدارة الفيديوهات - The Process</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+:root{--primary:#800000;--primary-light:#a00000;--gold:#D4AF37;--bg:#f0f2f5;--card:#fff;--border:#e0e0e0;--text:#333;--muted:#777;--danger:#dc3545;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);direction:rtl;min-height:100vh;}
+#authScreen{position:fixed;inset:0;background:linear-gradient(135deg,#0B0C2A,#1a1a4e 50%,#800000);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.auth-card{background:#fff;border-radius:20px;padding:3rem 2.5rem;width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+.auth-card h1{color:var(--primary);margin-bottom:.5rem;}
+.auth-card p{color:var(--muted);margin-bottom:1.5rem;font-size:.95rem;}
+.auth-input{width:100%;padding:.85rem 1rem;border:2px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:1rem;margin-bottom:1rem;direction:ltr;text-align:center;letter-spacing:2px;}
+.auth-input:focus{outline:none;border-color:var(--primary);}
+.auth-btn{width:100%;padding:.85rem;background:var(--primary);color:#fff;border:none;border-radius:10px;font-family:Tajawal,sans-serif;font-size:1.05rem;font-weight:700;cursor:pointer;}
+.auth-btn:hover{background:var(--primary-light);}
+#authError{color:var(--danger);margin-top:.7rem;font-size:.9rem;min-height:1.2rem;}
+#app{display:none;}
+header{background:linear-gradient(135deg,#800000,#2c3e50);color:#fff;padding:1.2rem 2rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.2);}
+.header-title{font-size:1.4rem;font-weight:800;}
+.header-title span{color:var(--gold);}
+.back-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:.5rem 1.2rem;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.9rem;}
+.back-btn:hover{background:rgba(255,255,255,.25);}
+.container{max-width:960px;margin:0 auto;padding:2rem 1rem;}
+.tab-nav{display:flex;gap:.5rem;margin-bottom:1.5rem;background:#fff;border-radius:14px;padding:.5rem;box-shadow:0 2px 10px rgba(0,0,0,.06);}
+.tab-btn{flex:1;padding:.75rem 1rem;border:none;border-radius:10px;font-family:Tajawal,sans-serif;font-size:1rem;font-weight:700;cursor:pointer;color:#777;background:transparent;transition:all .2s;}
+.tab-btn.active{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(128,0,0,.25);}
+.tab-btn:not(.active):hover{background:#f5f5f5;color:#333;}
+.selector-card{background:var(--card);border-radius:16px;padding:1.5rem 2rem;box-shadow:0 4px 20px rgba(0,0,0,.07);margin-bottom:2rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;}
+.sel-group{display:flex;flex-direction:column;gap:.4rem;flex:1;min-width:180px;}
+.sel-group label{font-size:.85rem;font-weight:700;color:var(--muted);}
+.sel-group select{padding:.7rem 1rem;border:2px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:.95rem;color:var(--text);background:#fff;cursor:pointer;}
+.sel-group select:focus{outline:none;border-color:var(--primary);}
+.btn-load{padding:.75rem 2rem;background:var(--primary);color:#fff;border:none;border-radius:10px;font-family:Tajawal,sans-serif;font-size:1rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+.btn-load:hover{background:var(--primary-light);}
+.table-card{background:var(--card);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.07);overflow:hidden;margin-bottom:1.5rem;}
+.table-header{padding:1.2rem 1.5rem;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--border);}
+.table-header h2{font-size:1.1rem;color:var(--primary);}
+.btn-add{padding:.6rem 1.5rem;background:var(--primary);color:#fff;border:none;border-radius:10px;font-family:Tajawal,sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;}
+.btn-add:hover{background:var(--primary-light);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:#f8f9fa;}
+th,td{padding:.8rem 1rem;text-align:right;border-bottom:1px solid var(--border);font-size:.9rem;}
+th{font-weight:700;color:var(--muted);font-size:.82rem;}
+tbody tr:hover{background:#fafafa;}
+tbody tr:last-child td{border-bottom:none;}
+.order-badge{background:#e8f5e9;color:#2e7d32;padding:2px 10px;border-radius:10px;font-size:.8rem;font-weight:700;}
+.parts-badge{background:#e8f4fd;color:#007bff;padding:2px 10px;border-radius:10px;font-size:.8rem;font-weight:700;}
+.url-preview{font-size:.78rem;color:var(--muted);direction:ltr;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
+.btn-edit{background:#e8f4fd;color:#007bff;border:none;padding:.35rem .65rem;border-radius:7px;cursor:pointer;margin:0 2px;}
+.btn-edit:hover{background:#007bff;color:#fff;}
+.btn-delete{background:#fde8e8;color:var(--danger);border:none;padding:.35rem .65rem;border-radius:7px;cursor:pointer;margin:0 2px;}
+.btn-delete:hover{background:var(--danger);color:#fff;}
+.btn-up,.btn-down{background:#f5f5f5;color:#555;border:none;padding:.35rem .55rem;border-radius:7px;cursor:pointer;margin:0 1px;font-size:.8rem;}
+.btn-up:hover,.btn-down:hover{background:#ddd;}
+.hint{background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.5rem;font-size:.88rem;color:#795548;line-height:1.7;}
+.hint strong{color:var(--primary);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:1rem;}
+.modal{background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
+.modal h2{color:var(--primary);margin-bottom:1.5rem;font-size:1.25rem;}
+.form-group{margin-bottom:1rem;}
+.form-group label{display:block;font-weight:700;margin-bottom:.4rem;font-size:.88rem;color:#555;}
+.form-group input,.form-group textarea{width:100%;padding:.7rem 1rem;border:2px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:.95rem;color:var(--text);}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:var(--primary);}
+.toggle-part2-btn{background:none;border:1.5px dashed var(--primary);color:var(--primary);padding:.4rem 1.2rem;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.9rem;font-weight:700;margin-bottom:1rem;}
+.modal-footer{display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;}
+.btn-save{padding:.7rem 2rem;background:var(--primary);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:1rem;font-weight:700;}
+.btn-save:hover{background:var(--primary-light);}
+.btn-cancel{padding:.7rem 1.5rem;background:#f0f0f0;color:var(--text);border:none;border-radius:10px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:1rem;}
+.btn-cancel:hover{background:#ddd;}
+.form-error{color:var(--danger);font-size:.85rem;margin-top:.5rem;min-height:1.2rem;}
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(100px);background:#2c3e50;color:#fff;padding:.8rem 2rem;border-radius:30px;font-size:1rem;font-weight:600;z-index:9999;opacity:0;transition:all .3s;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.warn{background:var(--danger);}
+@media(max-width:600px){.selector-card{flex-direction:column;}header{padding:1rem;}th:nth-child(3),td:nth-child(3){display:none;}}
+</style>
+</head>
+<body>
+
+<div id="authScreen">
+  <div class="auth-card">
+    <div style="font-size:3rem;margin-bottom:.5rem">🎬</div>
+    <h1>إدارة الفيديوهات</h1>
+    <p>The Process — Video Manager</p>
+    <input type="password" id="adminPass" class="auth-input" placeholder="كلمة المرور"
+           onkeydown="if(event.key==='Enter')submitAuth()">
+    <button class="auth-btn" onclick="submitAuth()"><i class="fas fa-lock-open"></i> دخول</button>
+    <div id="authError"></div>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="header-title">🎬 إدارة <span>الفيديوهات</span></div>
+    <a href="admin.html" style="text-decoration:none">
+      <button class="back-btn"><i class="fas fa-arrow-right"></i> لوحة التحكم</button>
+    </a>
+  </header>
+  <div class="container">
+
+    <div class="tab-nav">
+      <button class="tab-btn active" id="tabHomework" onclick="switchTab('homework')">📚 فيديوهات الواجب</button>
+      <button class="tab-btn" id="tabReview" onclick="switchTab('review')">🎯 فيديوهات المراجعة</button>
+    </div>
+
+    <!-- HOMEWORK -->
+    <div id="panelHomework">
+      <div class="hint"><strong>خطوات إضافة فيديو:</strong><br>
+        ١ — اختر الـ CODE ← ٢ — اختر الفصل ← ٣ — تحميل ← ٤ — فيديو جديد<br>
+        رابط Drive بأي شكل — هيتحول تلقائياً ✅</div>
+      <div class="selector-card">
+        <div class="sel-group">
+          <label><i class="fas fa-layer-group"></i> الـ CODE</label>
+          <select id="codeSelect" onchange="onCodeChange()">
+            <option value="">-- اختر --</option>
+            <option value="CODE1">CODE1 — ثالثة ثانوي عربي</option>
+            <option value="CODE2">CODE2 — ثالثة ثانوي لغات</option>
+            <option value="CODE3">CODE3 — مراجعة الفصل الأول عربي</option>
+            <option value="CODE4">CODE4 — مراجعة الفصل الأول لغات</option>
+            <option value="CODE5">CODE5 — تانية ثانوي لغات</option>
+            <option value="CODE6">CODE6 — مراجعة الفصل الثاني عربي</option>
+            <option value="CODE7">CODE7 — Chapter 2 لغات</option>
+            <option value="CODE8">CODE8 — الفصل الثالث عربي</option>
+            <option value="CODE9">CODE9 — Chapter 3 لغات</option>
+            <option value="CODE10">CODE10 — Final Revision لغات</option>
+            <option value="CODE11">CODE11 — مراجعة نصف السنة عربي</option>
+            <option value="CODE12">CODE12 — Mid-Year Review لغات</option>
+            <option value="CODE13">CODE13 — تانية ثانوي لغات</option>
+          </select>
+        </div>
+        <div class="sel-group">
+          <label><i class="fas fa-book-open"></i> الفصل</label>
+          <select id="chapterSelect"><option value="">-- اختر الـ CODE أولاً --</option></select>
+        </div>
+        <button class="btn-load" onclick="loadVideos()"><i class="fas fa-search"></i> تحميل</button>
+      </div>
+      <div class="table-card" id="tableCard" style="display:none">
+        <div class="table-header">
+          <h2 id="tableTitle">الفيديوهات</h2>
+          <button class="btn-add" onclick="openAddModal()"><i class="fas fa-plus"></i> فيديو جديد</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>الترتيب</th><th>العنوان</th><th>الرابط</th><th>الأجزاء</th><th>إجراءات</th></tr></thead>
+          <tbody id="videoBody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEW -->
+    <div id="panelReview" style="display:none">
+      <div class="hint" style="border-color:#6f42c1;background:#f8f0ff;">
+        <strong style="color:#6f42c1">🎯 فيديوهات المراجعة:</strong><br>
+        كل Review Code له فيديوهاته + أكواد الطلاب المسموح ليهم يشوفوه.<br>
+        الطالب بيدخل بالكود مباشرة ويشوف فيديوهات المراجعة.
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <h2>🗂️ Review Codes</h2>
+          <button class="btn-add" style="background:#6f42c1" onclick="openAddReviewCode()"><i class="fas fa-plus"></i> Review Code جديد</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>الكود</th><th>الوصف</th><th>فيديوهات</th><th>أكواد وصول</th><th>إجراءات</th></tr></thead>
+          <tbody id="reviewCodesBody"><tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa">اضغط تاب المراجعة للتحميل</td></tr></tbody></table>
+        </div>
+      </div>
+      <div id="reviewVideosSection" style="display:none">
+        <div class="table-card">
+          <div class="table-header">
+            <h2 id="reviewVideosTitle">فيديوهات</h2>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn-add" style="background:#555;font-size:.85rem" onclick="openManageAccessCodes()"><i class="fas fa-key"></i> أكواد الوصول</button>
+              <button class="btn-add" style="background:#6f42c1" onclick="openAddReviewVideo()"><i class="fas fa-plus"></i> فيديو جديد</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table><thead><tr><th>الترتيب</th><th>العنوان</th><th>الرابط</th><th>الأجزاء</th><th>إجراءات</th></tr></thead>
+            <tbody id="reviewVideoBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Video Modal -->
+<div class="modal-overlay" id="videoModal" style="display:none" onclick="if(event.target===this)closeVideoModal()">
+  <div class="modal">
+    <h2 id="modalTitle">➕ فيديو جديد</h2>
+    <div class="form-group"><label>📝 عنوان الفيديو *</label><input type="text" id="vTitle" placeholder="حل واجب حصة 24"></div>
+    <div class="form-group"><label>🔢 رقم الترتيب *</label><input type="number" id="vOrder" min="1" placeholder="1" style="width:130px"></div>
+    <div class="form-group"><label>🔗 رابط Drive — الجزء الأول *</label><input type="text" id="vUrl1" placeholder="https://drive.google.com/file/d/..." dir="ltr"></div>
+    <button class="toggle-part2-btn" id="toggleBtn" onclick="togglePart2()">+ إضافة جزء ثاني</button>
+    <div id="part2Row" style="display:none">
+      <div class="form-group"><label>🔗 رابط Drive — الجزء الثاني</label><input type="text" id="vUrl2" placeholder="https://drive.google.com/file/d/..." dir="ltr"></div>
+    </div>
+    <div id="formError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeVideoModal()">إلغاء</button>
+      <button class="btn-save" onclick="saveVideo()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Review Code Modal -->
+<div class="modal-overlay" id="reviewCodeModal" style="display:none" onclick="if(event.target===this)closeReviewCodeModal()">
+  <div class="modal">
+    <h2 style="color:#6f42c1">➕ Review Code جديد</h2>
+    <div class="form-group"><label>🔑 الكود * (مثال: REV1)</label><input type="text" id="rcCode" placeholder="REV1" dir="ltr" style="font-family:monospace"></div>
+    <div class="form-group"><label>📝 وصف (اختياري)</label><input type="text" id="rcDesc" placeholder="مراجعة الفصل الأول"></div>
+    <div id="rcError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeReviewCodeModal()">إلغاء</button>
+      <button class="btn-save" style="background:#6f42c1" onclick="saveReviewCode()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Access Codes Modal -->
+<div class="modal-overlay" id="accessCodesModal" style="display:none" onclick="if(event.target===this)closeAccessCodesModal()">
+  <div class="modal">
+    <h2 style="color:#6f42c1">🔑 أكواد الوصول</h2>
+    <p style="color:#777;font-size:.88rem;margin-bottom:1rem">كل كود في سطر لوحده — الطالب بيدخل بيه ويشوف فيديوهات المراجعة.</p>
+    <div class="form-group"><label>📋 الأكواد</label>
+      <textarea id="accessCodesInput" rows="8" style="font-family:monospace;font-size:.9rem;resize:vertical;direction:ltr" placeholder="12345&#10;67890"></textarea>
+    </div>
+    <div id="acError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeAccessCodesModal()">إلغاء</button>
+      <button class="btn-save" style="background:#6f42c1" onclick="saveAccessCodes()">💾 حفظ الأكواد</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyBXsX0v_7p8CHDFiTUm4XkQsoZIqGueAOk",
+  authDomain:"the-process-5d196.firebaseapp.com",
+  databaseURL:"https://the-process-5d196-default-rtdb.firebaseio.com",
+  projectId:"the-process-5d196",
+  storageBucket:"the-process-5d196.firebasestorage.app",
+  messagingSenderId:"96415822332",
+  appId:"1:96415822332:web:2be476bee2e474383d8279"
+});
+var db = firebase.database();
+
+var PASS = "mora.admin.2026";
+var CHAPTERS = {
+  CODE1:['الفصل الأول','الفصل الثاني','الفصل الثالث','الفصل الرابع','الفصل الخامس','الفصل السادس','الفصل السابع','الفصل الثامن'],
+  CODE2:['Chapter 1','Chapter 2','Chapter 3','Chapter 4','Chapter 5','Chapter 6','Chapter 7','Chapter 8'],
+  CODE3:['مراجعة الفصل الأول'],CODE4:['Chapter 1 Revision'],CODE5:['Homework'],
+  CODE6:['مراجعة الفصل الثاني'],CODE7:['Chapter 2'],CODE8:['الفصل الثالث'],
+  CODE9:['Chapter 3'],CODE10:['Final Revision'],CODE11:['مراجعة نصف السنة'],
+  CODE12:['Mid-Year Review'],CODE13:['Homework']
+};
+
+var currentCode=null,currentChapter=null,allVideos={},editingId=null;
+var currentReviewCode=null,reviewVideos={},editingReviewVid=null;
+var saveTarget='homework';
+
+// AUTH
+function submitAuth(){
+  var pass=document.getElementById('adminPass').value;
+  if(pass===PASS){
+    sessionStorage.setItem('vidAuth','yes');
+    document.getElementById('authScreen').style.display='none';
+    document.getElementById('app').style.display='block';
+  } else {
+    document.getElementById('authError').textContent='❌ كلمة المرور غلط!';
+    document.getElementById('adminPass').value='';
+  }
+}
+if(sessionStorage.getItem('vidAuth')==='yes'){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+}
+
+// HELPERS
+function toEmbed(url){
+  if(!url)return'';
+  url=url.trim();
+  if(url.includes('/preview'))return url;
+  var m=url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if(m)return'https://drive.google.com/file/d/'+m[1]+'/preview';
+  var m2=url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if(m2)return'https://drive.google.com/file/d/'+m2[1]+'/preview';
+  return url;
+}
+function showToast(msg,type){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast show'+(type?' '+type:'');
+  setTimeout(function(){t.classList.remove('show');},3000);
+}
+function shortUrl(url){return(url||'').replace('https://drive.google.com/file/d/','').substring(0,28);}
+
+// TABS
+function switchTab(tab){
+  document.getElementById('panelHomework').style.display=tab==='homework'?'block':'none';
+  document.getElementById('panelReview').style.display=tab==='review'?'block':'none';
+  document.getElementById('tabHomework').className='tab-btn'+(tab==='homework'?' active':'');
+  document.getElementById('tabReview').className='tab-btn'+(tab==='review'?' active':'');
+  if(tab==='review')loadReviewCodes();
+}
+
+// HOMEWORK
+function onCodeChange(){
+  var code=document.getElementById('codeSelect').value;
+  var sel=document.getElementById('chapterSelect');
+  sel.innerHTML='';
+  if(!code){sel.innerHTML='<option value="">-- اختر الـ CODE أولاً --</option>';return;}
+  (CHAPTERS[code]||[]).forEach(function(ch,i){
+    var o=document.createElement('option');
+    o.value=i+1;o.textContent=ch;sel.appendChild(o);
+  });
+}
+function loadVideos(){
+  var code=document.getElementById('codeSelect').value;
+  var idx=document.getElementById('chapterSelect').value;
+  var sel=document.getElementById('chapterSelect');
+  var name=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:'';
+  if(!code||!idx){showToast('اختر الـ CODE والفصل أولاً','warn');return;}
+  currentCode=code;currentChapter=idx;
+  document.getElementById('tableTitle').textContent=code+' — '+name;
+  document.getElementById('tableCard').style.display='block';
+  document.getElementById('videoBody').innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+  db.ref('videos/'+code+'/ch'+idx).on('value',function(snap){
+    allVideos=snap.val()||{};renderHwTable();
+  });
+}
+function renderHwTable(){
+  var tbody=document.getElementById('videoBody');
+  var entries=Object.entries(allVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:3rem;color:#aaa"><i class="fas fa-video" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#ccc"></i>لا يوجد فيديوهات — اضغط "+ فيديو جديد"</td></tr>';return;}
+  tbody.innerHTML='';
+  entries.forEach(function(entry){
+    var vid=entry[0],v=entry[1];
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td><span class="order-badge">'+(v.order||0)+'</span></td>'+
+      '<td><strong>'+(v.title||'')+'</strong></td>'+
+      '<td><span class="url-preview">'+shortUrl(v.url1)+'…</span></td>'+
+      '<td><span class="parts-badge">'+(v.url2?2:1)+' جزء</span></td>'+
+      '<td>'+
+        '<button class="btn-up" onclick="moveHw(\''+vid+'\',-1)"><i class="fas fa-arrow-up"></i></button>'+
+        '<button class="btn-down" onclick="moveHw(\''+vid+'\',1)"><i class="fas fa-arrow-down"></i></button>'+
+        '<button class="btn-edit" onclick="editHw(\''+vid+'\')"><i class="fas fa-edit"></i></button>'+
+        '<button class="btn-delete" onclick="deleteHw(\''+vid+'\')"><i class="fas fa-trash"></i></button>'+
+      '</td>';
+    tbody.appendChild(tr);
+  });
+}
+function moveHw(vid,dir){
+  var entries=Object.entries(allVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  var idx=entries.findIndex(function(e){return e[0]===vid;});
+  var si=idx+dir;if(si<0||si>=entries.length)return;
+  var base='videos/'+currentCode+'/ch'+currentChapter;
+  db.ref(base+'/'+entries[idx][0]+'/order').set(entries[si][1].order||0);
+  db.ref(base+'/'+entries[si][0]+'/order').set(entries[idx][1].order||0);
+}
+function openAddModal(){
+  saveTarget='homework';editingId=null;
+  document.getElementById('modalTitle').textContent='➕ فيديو جديد';
+  document.getElementById('vTitle').value='';document.getElementById('vUrl1').value='';
+  document.getElementById('vUrl2').value='';document.getElementById('vOrder').value=nextHwOrder();
+  document.getElementById('part2Row').style.display='none';
+  document.getElementById('toggleBtn').textContent='+ إضافة جزء ثاني';
+  document.getElementById('formError').textContent='';
+  document.getElementById('videoModal').style.display='flex';
+}
+function nextHwOrder(){var o=Object.values(allVideos).map(function(v){return v.order||0;});return o.length?Math.max.apply(null,o)+1:1;}
+function editHw(vid){
+  var v=allVideos[vid];if(!v)return;
+  saveTarget='homework';editingId=vid;
+  document.getElementById('modalTitle').textContent='✏️ تعديل الفيديو';
+  document.getElementById('vTitle').value=v.title||'';document.getElementById('vUrl1').value=v.url1||'';
+  document.getElementById('vUrl2').value=v.url2||'';document.getElementById('vOrder').value=v.order||1;
+  document.getElementById('part2Row').style.display=v.url2?'block':'none';
+  document.getElementById('toggleBtn').textContent=v.url2?'- إزالة جزء ثاني':'+ إضافة جزء ثاني';
+  document.getElementById('formError').textContent='';
+  document.getElementById('videoModal').style.display='flex';
+}
+function deleteHw(vid){
+  var v=allVideos[vid];if(!v)return;
+  if(!confirm('هتحذف: "'+v.title+'"؟'))return;
+  db.ref('videos/'+currentCode+'/ch'+currentChapter+'/'+vid).remove();
+  showToast('🗑️ تم الحذف!','warn');
+}
+
+// REVIEW CODES
+function loadReviewCodes(){
+  document.getElementById('reviewCodesBody').innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+  db.ref('reviews').once('value',function(snap){
+    var data=snap.val()||{};
+    var tbody=document.getElementById('reviewCodesBody');
+    var entries=Object.entries(data);
+    if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa">لا يوجد Review Codes بعد</td></tr>';return;}
+    tbody.innerHTML='';
+    entries.forEach(function(entry){
+      var rcId=entry[0],rc=entry[1];
+      var vc=Object.keys(rc.videos||{}).length;
+      var ac=Object.keys(rc.accessCodes||{}).length;
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td><strong style="font-family:monospace;color:#6f42c1">'+(rc.code||rcId)+'</strong></td>'+
+        '<td style="color:#777;font-size:.88rem">'+(rc.desc||'—')+'</td>'+
+        '<td><span class="parts-badge">'+vc+' فيديو</span></td>'+
+        '<td><span class="order-badge">'+ac+' كود</span></td>'+
+        '<td><button onclick="selectReviewCode(\''+rcId+'\')" style="background:#f0e8fd;color:#6f42c1;border:none;padding:.35rem .8rem;border-radius:7px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.85rem;font-weight:700"><i class="fas fa-folder-open"></i> فتح</button> '+
+        '<button class="btn-delete" onclick="deleteReviewCode(\''+rcId+'\')"><i class="fas fa-trash"></i></button></td>';
+      tbody.appendChild(tr);
+    });
+  });
+}
+function selectReviewCode(rcId){
+  currentReviewCode=rcId;
+  db.ref('reviews/'+rcId).once('value',function(snap){
+    var rc=snap.val()||{};
+    reviewVideos=rc.videos||{};
+    document.getElementById('reviewVideosTitle').textContent='🎯 '+(rc.code||rcId)+(rc.desc?' — '+rc.desc:'');
+    document.getElementById('reviewVideosSection').style.display='block';
+    renderReviewTable();
+  });
+}
+function renderReviewTable(){
+  var tbody=document.getElementById('reviewVideoBody');
+  var entries=Object.entries(reviewVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:3rem;color:#aaa"><i class="fas fa-video" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#ccc"></i>لا يوجد فيديوهات — اضغط "+ فيديو جديد"</td></tr>';return;}
+  tbody.innerHTML='';
+  entries.forEach(function(entry){
+    var vid=entry[0],v=entry[1];
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td><span class="order-badge">'+(v.order||0)+'</span></td>'+
+      '<td><strong>'+(v.title||'')+'</strong></td>'+
+      '<td><span class="url-preview">'+shortUrl(v.url1)+'…</span></td>'+
+      '<td><span class="parts-badge">'+(v.url2?2:1)+' جزء</span></td>'+
+      '<td>'+
+        '<button class="btn-up" onclick="moveRev(\''+vid+'\',-1)"><i class="fas fa-arrow-up"></i></button>'+
+        '<button class="btn-down" onclick="moveRev(\''+vid+'\',1)"><i class="fas fa-arrow-down"></i></button>'+
+        '<button class="btn-edit" onclick="editRev(\''+vid+'\')"><i class="fas fa-edit"></i></button>'+
+        '<button class="btn-delete" onclick="deleteRev(\''+vid+'\')"><i class="fas fa-trash"></i></button>'+
+      '</td>';
+    tbody.appendChild(tr);
+  });
+}
+function openAddReviewCode(){
+  document.getElementById('rcCode').value='';document.getElementById('rcDesc').value='';
+  document.getElementById('rcError').textContent='';
+  document.getElementById('reviewCodeModal').style.display='flex';
+}
+function closeReviewCodeModal(){document.getElementById('reviewCodeModal').style.display='none';}
+function saveReviewCode(){
+  var code=document.getElementById('rcCode').value.trim().toUpperCase();
+  var desc=document.getElementById('rcDesc').value.trim();
+  if(!code){document.getElementById('rcError').textContent='⚠️ الكود مطلوب!';return;}
+  db.ref('reviews/rc_'+Date.now()).set({code:code,desc:desc}).then(function(){
+    closeReviewCodeModal();showToast('✅ تم الحفظ!');loadReviewCodes();
+  }).catch(function(e){document.getElementById('rcError').textContent='❌ '+e.message;});
+}
+function deleteReviewCode(rcId){
+  if(!confirm('هتحذف الـ Review Code ده وكل فيديوهاته؟'))return;
+  db.ref('reviews/'+rcId).remove().then(function(){
+    document.getElementById('reviewVideosSection').style.display='none';
+    showToast('🗑️ تم الحذف!','warn');loadReviewCodes();
+  });
+}
+function openManageAccessCodes(){
+  if(!currentReviewCode)return;
+  db.ref('reviews/'+currentReviewCode+'/accessCodes').once('value',function(snap){
+    var data=snap.val()||{};
+    document.getElementById('accessCodesInput').value=Object.values(data).join('\n');
+    document.getElementById('acError').textContent='';
+    document.getElementById('accessCodesModal').style.display='flex';
+  });
+}
+function closeAccessCodesModal(){document.getElementById('accessCodesModal').style.display='none';}
+function saveAccessCodes(){
+  var raw=document.getElementById('accessCodesInput').value;
+  var codes=raw.split('\n').map(function(c){return c.trim();}).filter(Boolean);
+  if(!codes.length){document.getElementById('acError').textContent='⚠️ حط كود واحد على الأقل!';return;}
+  var obj={};codes.forEach(function(c,i){obj['c'+i]=c;});
+  db.ref('reviews/'+currentReviewCode+'/accessCodes').set(obj).then(function(){
+    closeAccessCodesModal();showToast('✅ تم حفظ '+codes.length+' كود!');
+  }).catch(function(e){document.getElementById('acError').textContent='❌ '+e.message;});
+}
+function openAddReviewVideo(){
+  saveTarget='review';editingReviewVid=null;
+  document.getElementById('modalTitle').textContent='➕ فيديو مراجعة جديد';
+  document.getElementById('vTitle').value='';document.getElementById('vUrl1').value='';
+  document.getElementById('vUrl2').value='';document.getElementById('vOrder').value=nextRevOrder();
+  document.getElementById('part2Row').style.display='none';
+  document.getElementById('toggleBtn').textContent='+ إضافة جزء ثاني';
+  document.getElementById('formError').textContent='';
+  document.getElementById('videoModal').style.display='flex';
+}
+function nextRevOrder(){var o=Object.values(reviewVideos).map(function(v){return v.order||0;});return o.length?Math.max.apply(null,o)+1:1;}
+function editRev(vid){
+  var v=reviewVideos[vid];if(!v)return;
+  saveTarget='review';editingReviewVid=vid;
+  document.getElementById('modalTitle').textContent='✏️ تعديل فيديو المراجعة';
+  document.getElementById('vTitle').value=v.title||'';document.getElementById('vUrl1').value=v.url1||'';
+  document.getElementById('vUrl2').value=v.url2||'';document.getElementById('vOrder').value=v.order||1;
+  document.getElementById('part2Row').style.display=v.url2?'block':'none';
+  document.getElementById('toggleBtn').textContent=v.url2?'- إزالة جزء ثاني':'+ إضافة جزء ثاني';
+  document.getElementById('formError').textContent='';
+  document.getElementById('videoModal').style.display='flex';
+}
+function moveRev(vid,dir){
+  var entries=Object.entries(reviewVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  var idx=entries.findIndex(function(e){return e[0]===vid;});
+  var si=idx+dir;if(si<0||si>=entries.length)return;
+  var base='reviews/'+currentReviewCode+'/videos';
+  db.ref(base+'/'+entries[idx][0]+'/order').set(entries[si][1].order||0);
+  db.ref(base+'/'+entries[si][0]+'/order').set(entries[idx][1].order||0);
+  db.ref(base).once('value',function(s){reviewVideos=s.val()||{};renderReviewTable();});
+}
+function deleteRev(vid){
+  var v=reviewVideos[vid];if(!v)return;
+  if(!confirm('هتحذف: "'+v.title+'"؟'))return;
+  db.ref('reviews/'+currentReviewCode+'/videos/'+vid).remove().then(function(){
+    delete reviewVideos[vid];renderReviewTable();showToast('🗑️ تم الحذف!','warn');
+  });
+}
+
+// SHARED MODAL
+function togglePart2(){
+  var row=document.getElementById('part2Row');
+  var btn=document.getElementById('toggleBtn');
+  var open=row.style.display==='none';
+  row.style.display=open?'block':'none';
+  btn.textContent=open?'- إزالة جزء ثاني':'+ إضافة جزء ثاني';
+  if(!open)document.getElementById('vUrl2').value='';
+}
+function closeVideoModal(){document.getElementById('videoModal').style.display='none';saveTarget='homework';}
+function saveVideo(){
+  var title=document.getElementById('vTitle').value.trim();
+  var url1=document.getElementById('vUrl1').value.trim();
+  var url2=document.getElementById('vUrl2').value.trim();
+  var order=parseInt(document.getElementById('vOrder').value)||1;
+  var errEl=document.getElementById('formError');
+  if(!title){errEl.textContent='⚠️ العنوان مطلوب!';return;}
+  if(!url1){errEl.textContent='⚠️ رابط الجزء الأول مطلوب!';return;}
+  var data={title:title,url1:toEmbed(url1),order:order,updatedAt:Date.now()};
+  if(url2)data.url2=toEmbed(url2);
+  if(saveTarget==='review'){
+    var vid=editingReviewVid||('v'+Date.now());
+    db.ref('reviews/'+currentReviewCode+'/videos/'+vid).set(data).then(function(){
+      reviewVideos[vid]=data;closeVideoModal();renderReviewTable();
+      showToast(editingReviewVid?'✅ تم التحديث!':'✅ تم إضافة الفيديو!');
+    }).catch(function(e){errEl.textContent='❌ '+e.message;});
+  } else {
+    var vid2=editingId||('v'+Date.now());
+    db.ref('videos/'+currentCode+'/ch'+currentChapter+'/'+vid2).set(data).then(function(){
+      closeVideoModal();showToast(editingId?'✅ تم التحديث!':'✅ تم إضافة الفيديو!');
+    }).catch(function(e){errEl.textContent='❌ '+e.message;});
+  }
+}
+</script>
+</body>
+</html>
