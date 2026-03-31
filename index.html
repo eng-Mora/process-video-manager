@@ -55,6 +55,8 @@ tbody tr:last-child td{border-bottom:none;}
 .url-preview{font-size:.78rem;color:var(--muted);direction:ltr;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
 .btn-edit{background:#e8f4fd;color:#007bff;border:none;padding:.35rem .65rem;border-radius:7px;cursor:pointer;margin:0 2px;}
 .btn-edit:hover{background:#007bff;color:#fff;}
+.btn-key{background:#fff8e1;color:#e6a817;border:none;padding:.35rem .65rem;border-radius:7px;cursor:pointer;margin:0 2px;}
+.btn-key:hover{background:#e6a817;color:#fff;}
 .btn-delete{background:#fde8e8;color:var(--danger);border:none;padding:.35rem .65rem;border-radius:7px;cursor:pointer;margin:0 2px;}
 .btn-delete:hover{background:var(--danger);color:#fff;}
 .btn-up,.btn-down{background:#f5f5f5;color:#555;border:none;padding:.35rem .55rem;border-radius:7px;cursor:pointer;margin:0 1px;font-size:.8rem;}
@@ -146,7 +148,7 @@ tbody tr:last-child td{border-bottom:none;}
           <button class="btn-add" onclick="openAddModal()"><i class="fas fa-plus"></i> فيديو جديد</button>
         </div>
         <div style="overflow-x:auto">
-          <table><thead><tr><th>الترتيب</th><th>العنوان</th><th>الرابط</th><th>الأجزاء</th><th>إجراءات</th></tr></thead>
+          <table><thead><tr><th>الترتيب</th><th>العنوان</th><th>الرابط</th><th>الأجزاء</th><th>أكواد</th><th>إجراءات</th></tr></thead>
           <tbody id="videoBody"></tbody></table>
         </div>
       </div>
@@ -195,10 +197,11 @@ tbody tr:last-child td{border-bottom:none;}
     <h2 id="modalTitle">➕ فيديو جديد</h2>
     <div class="form-group"><label>📝 عنوان الفيديو *</label><input type="text" id="vTitle" placeholder="حل واجب حصة 24"></div>
     <div class="form-group"><label>🔢 رقم الترتيب *</label><input type="number" id="vOrder" min="1" placeholder="1" style="width:130px"></div>
-    <div id="partsContainer">
-      <!-- Parts injected dynamically -->
+    <div class="form-group"><label>🔗 رابط Drive — الجزء الأول *</label><input type="text" id="vUrl1" placeholder="https://drive.google.com/file/d/..." dir="ltr"></div>
+    <button class="toggle-part2-btn" id="toggleBtn" onclick="togglePart2()">+ إضافة جزء ثاني</button>
+    <div id="part2Row" style="display:none">
+      <div class="form-group"><label>🔗 رابط Drive — الجزء الثاني</label><input type="text" id="vUrl2" placeholder="https://drive.google.com/file/d/..." dir="ltr"></div>
     </div>
-    <button class="toggle-part2-btn" id="addPartBtn" onclick="addPart()">+ إضافة جزء</button>
     <div id="formError" class="form-error"></div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeVideoModal()">إلغاء</button>
@@ -233,6 +236,24 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeAccessCodesModal()">إلغاء</button>
       <button class="btn-save" style="background:#6f42c1" onclick="saveAccessCodes()">💾 حفظ الأكواد</button>
+    </div>
+  </div>
+</div>
+
+<!-- Homework Video Access Codes Modal -->
+<div class="modal-overlay" id="hwAccessCodesModal" style="display:none" onclick="if(event.target===this)closeHwAccessCodesModal()">
+  <div class="modal">
+    <h2 style="color:#e6a817">🔑 أكواد وصول الفيديو</h2>
+    <p id="hwAcVideoTitle" style="color:#777;font-size:.88rem;margin-bottom:.5rem;font-weight:700"></p>
+    <p style="color:#aaa;font-size:.83rem;margin-bottom:1rem">لو سبت الخانة فاضية → الفيديو يظهر لكل طلاب الـ CODE. لو حطيت أكواد → يظهر بس للطلاب دول.</p>
+    <div class="form-group">
+      <label>📋 أكواد الطلاب</label>
+      <textarea id="hwAccessCodesInput" rows="8" style="font-family:monospace;font-size:.9rem;resize:vertical;direction:ltr" placeholder="12345&#10;67890"></textarea>
+    </div>
+    <div id="hwAcError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeHwAccessCodesModal()">إلغاء</button>
+      <button class="btn-save" style="background:#e6a817" onclick="saveHwAccessCodes()">💾 حفظ الأكواد</button>
     </div>
   </div>
 </div>
@@ -338,17 +359,22 @@ function loadVideos(){
 function renderHwTable(){
   var tbody=document.getElementById('videoBody');
   var entries=Object.entries(allVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
-  if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:3rem;color:#aaa"><i class="fas fa-video" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#ccc"></i>لا يوجد فيديوهات — اضغط "+ فيديو جديد"</td></tr>';return;}
+  if(!entries.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:3rem;color:#aaa"><i class="fas fa-video" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#ccc"></i>لا يوجد فيديوهات — اضغط "+ فيديو جديد"</td></tr>';return;}
   tbody.innerHTML='';
   entries.forEach(function(entry){
     var vid=entry[0],v=entry[1];
     var tr=document.createElement('tr');
+    var acCount=Object.keys(v.accessCodes||{}).length;
     tr.innerHTML='<td><span class="order-badge">'+(v.order||0)+'</span></td>'+
       '<td><strong>'+(v.title||'')+'</strong></td>'+
       '<td><span class="url-preview">'+shortUrl(v.url1)+'…</span></td>'+
-      '<td><span class="parts-badge">'+countParts(v)+' جزء</span></td>'+
+      '<td><span class="parts-badge">'+(v.url2?2:1)+' جزء</span></td>'+
+      '<td>'+(acCount?'<span class="order-badge">'+acCount+' كود</span>':'<span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-size:.8rem;font-weight:700">🌍 الكل</span>')+'</td>'+
+      '<td>'+
+        '<button class="btn-up" onclick="moveHw(\''+vid+'\',-1)"><i class="fas fa-arrow-up"></i></button>'+
         '<button class="btn-down" onclick="moveHw(\''+vid+'\',1)"><i class="fas fa-arrow-down"></i></button>'+
         '<button class="btn-edit" onclick="editHw(\''+vid+'\')"><i class="fas fa-edit"></i></button>'+
+        '<button class="btn-key" onclick="openHwAccessCodes(\''+vid+'\')"><i class="fas fa-key"></i></button>'+
         '<button class="btn-delete" onclick="deleteHw(\''+vid+'\')"><i class="fas fa-trash"></i></button>'+
       '</td>';
     tbody.appendChild(tr);
@@ -365,10 +391,11 @@ function moveHw(vid,dir){
 function openAddModal(){
   saveTarget='homework';editingId=null;
   document.getElementById('modalTitle').textContent='➕ فيديو جديد';
-  document.getElementById('vTitle').value='';
-  document.getElementById('vOrder').value=nextHwOrder();
+  document.getElementById('vTitle').value='';document.getElementById('vUrl1').value='';
+  document.getElementById('vUrl2').value='';document.getElementById('vOrder').value=nextHwOrder();
+  document.getElementById('part2Row').style.display='none';
+  document.getElementById('toggleBtn').textContent='+ إضافة جزء ثاني';
   document.getElementById('formError').textContent='';
-  initParts([]);
   document.getElementById('videoModal').style.display='flex';
 }
 function nextHwOrder(){var o=Object.values(allVideos).map(function(v){return v.order||0;});return o.length?Math.max.apply(null,o)+1:1;}
@@ -376,11 +403,11 @@ function editHw(vid){
   var v=allVideos[vid];if(!v)return;
   saveTarget='homework';editingId=vid;
   document.getElementById('modalTitle').textContent='✏️ تعديل الفيديو';
-  document.getElementById('vTitle').value=v.title||'';
-  document.getElementById('vOrder').value=v.order||1;
+  document.getElementById('vTitle').value=v.title||'';document.getElementById('vUrl1').value=v.url1||'';
+  document.getElementById('vUrl2').value=v.url2||'';document.getElementById('vOrder').value=v.order||1;
+  document.getElementById('part2Row').style.display=v.url2?'block':'none';
+  document.getElementById('toggleBtn').textContent=v.url2?'- إزالة جزء ثاني':'+ إضافة جزء ثاني';
   document.getElementById('formError').textContent='';
-  var urls=[];for(var i=1;v['url'+i];i++){urls.push(v['url'+i]);}
-  initParts(urls.length?urls:['']);
   document.getElementById('videoModal').style.display='flex';
 }
 function deleteHw(vid){
@@ -435,7 +462,7 @@ function renderReviewTable(){
     tr.innerHTML='<td><span class="order-badge">'+(v.order||0)+'</span></td>'+
       '<td><strong>'+(v.title||'')+'</strong></td>'+
       '<td><span class="url-preview">'+shortUrl(v.url1)+'…</span></td>'+
-      '<td><span class="parts-badge">'+countParts(v)+' جزء</span></td>'+
+      '<td><span class="parts-badge">'+(v.url2?2:1)+' جزء</span></td>'+
       '<td>'+
         '<button class="btn-up" onclick="moveRev(\''+vid+'\',-1)"><i class="fas fa-arrow-up"></i></button>'+
         '<button class="btn-down" onclick="moveRev(\''+vid+'\',1)"><i class="fas fa-arrow-down"></i></button>'+
@@ -488,10 +515,11 @@ function saveAccessCodes(){
 function openAddReviewVideo(){
   saveTarget='review';editingReviewVid=null;
   document.getElementById('modalTitle').textContent='➕ فيديو مراجعة جديد';
-  document.getElementById('vTitle').value='';
-  document.getElementById('vOrder').value=nextRevOrder();
+  document.getElementById('vTitle').value='';document.getElementById('vUrl1').value='';
+  document.getElementById('vUrl2').value='';document.getElementById('vOrder').value=nextRevOrder();
+  document.getElementById('part2Row').style.display='none';
+  document.getElementById('toggleBtn').textContent='+ إضافة جزء ثاني';
   document.getElementById('formError').textContent='';
-  initParts([]);
   document.getElementById('videoModal').style.display='flex';
 }
 function nextRevOrder(){var o=Object.values(reviewVideos).map(function(v){return v.order||0;});return o.length?Math.max.apply(null,o)+1:1;}
@@ -499,11 +527,11 @@ function editRev(vid){
   var v=reviewVideos[vid];if(!v)return;
   saveTarget='review';editingReviewVid=vid;
   document.getElementById('modalTitle').textContent='✏️ تعديل فيديو المراجعة';
-  document.getElementById('vTitle').value=v.title||'';
-  document.getElementById('vOrder').value=v.order||1;
+  document.getElementById('vTitle').value=v.title||'';document.getElementById('vUrl1').value=v.url1||'';
+  document.getElementById('vUrl2').value=v.url2||'';document.getElementById('vOrder').value=v.order||1;
+  document.getElementById('part2Row').style.display=v.url2?'block':'none';
+  document.getElementById('toggleBtn').textContent=v.url2?'- إزالة جزء ثاني':'+ إضافة جزء ثاني';
   document.getElementById('formError').textContent='';
-  var urls=[];for(var i=1;v['url'+i];i++){urls.push(v['url'+i]);}
-  initParts(urls.length?urls:['']);
   document.getElementById('videoModal').style.display='flex';
 }
 function moveRev(vid,dir){
@@ -523,55 +551,59 @@ function deleteRev(vid){
   });
 }
 
-// SHARED MODAL — MULTI-PART
-var partCount=0;
-function initParts(urls){
-  var container=document.getElementById('partsContainer');
-  container.innerHTML='';
-  partCount=0;
-  var list=urls&&urls.length?urls:[''];
-  list.forEach(function(u){addPart(u);});
-}
-function addPart(url){
-  partCount++;
-  var idx=partCount;
-  var isFirst=idx===1;
-  var container=document.getElementById('partsContainer');
-  var div=document.createElement('div');
-  div.className='form-group';
-  div.id='partRow'+idx;
-  div.innerHTML='<label style="display:flex;justify-content:space-between;align-items:center">'+
-    '<span>🔗 رابط Drive — الجزء '+(isFirst?'الأول *':''+idx)+'</span>'+
-    (!isFirst?'<button type="button" onclick="removePart('+idx+')" style="background:#fde8e8;color:var(--danger);border:none;padding:.2rem .6rem;border-radius:6px;cursor:pointer;font-size:.8rem"><i class="fas fa-times"></i> حذف</button>':'')+
-    '</label>'+
-    '<input type="text" id="vUrl'+idx+'" value="'+(url||'')+'" placeholder="https://drive.google.com/file/d/..." dir="ltr">';
-  container.appendChild(div);
-}
-function removePart(idx){
-  var row=document.getElementById('partRow'+idx);
-  if(row)row.remove();
-}
-function getPartUrls(){
-  var urls=[];
-  var container=document.getElementById('partsContainer');
-  var inputs=container.querySelectorAll('input[type="text"]');
-  inputs.forEach(function(inp){
-    var v=inp.value.trim();
-    if(v)urls.push(toEmbed(v));
+// HOMEWORK VIDEO ACCESS CODES
+var editingHwAccessVid=null;
+function openHwAccessCodes(vid){
+  editingHwAccessVid=vid;
+  var v=allVideos[vid];if(!v)return;
+  document.getElementById('hwAcVideoTitle').textContent='📹 '+v.title;
+  document.getElementById('hwAcError').textContent='';
+  db.ref('videos/'+currentCode+'/ch'+currentChapter+'/'+vid+'/accessCodes').once('value',function(snap){
+    var data=snap.val()||{};
+    document.getElementById('hwAccessCodesInput').value=Object.values(data).join('\n');
+    document.getElementById('hwAccessCodesModal').style.display='flex';
   });
-  return urls;
+}
+function closeHwAccessCodesModal(){document.getElementById('hwAccessCodesModal').style.display='none';editingHwAccessVid=null;}
+function saveHwAccessCodes(){
+  var raw=document.getElementById('hwAccessCodesInput').value;
+  var codes=raw.split('\n').map(function(c){return c.trim();}).filter(Boolean);
+  var ref=db.ref('videos/'+currentCode+'/ch'+currentChapter+'/'+editingHwAccessVid+'/accessCodes');
+  if(!codes.length){
+    // فاضي = شيل القيود، يظهر للكل
+    ref.remove().then(function(){
+      if(allVideos[editingHwAccessVid])delete allVideos[editingHwAccessVid].accessCodes;
+      closeHwAccessCodesModal();renderHwTable();showToast('✅ الفيديو هيظهر لكل الطلاب!');
+    }).catch(function(e){document.getElementById('hwAcError').textContent='❌ '+e.message;});
+    return;
+  }
+  var obj={};codes.forEach(function(c,i){obj['c'+i]=c;});
+  ref.set(obj).then(function(){
+    allVideos[editingHwAccessVid].accessCodes=obj;
+    closeHwAccessCodesModal();renderHwTable();showToast('✅ تم حفظ '+codes.length+' كود!');
+  }).catch(function(e){document.getElementById('hwAcError').textContent='❌ '+e.message;});
+}
+
+// SHARED MODAL
+function togglePart2(){
+  var row=document.getElementById('part2Row');
+  var btn=document.getElementById('toggleBtn');
+  var open=row.style.display==='none';
+  row.style.display=open?'block':'none';
+  btn.textContent=open?'- إزالة جزء ثاني':'+ إضافة جزء ثاني';
+  if(!open)document.getElementById('vUrl2').value='';
 }
 function closeVideoModal(){document.getElementById('videoModal').style.display='none';saveTarget='homework';}
 function saveVideo(){
   var title=document.getElementById('vTitle').value.trim();
+  var url1=document.getElementById('vUrl1').value.trim();
+  var url2=document.getElementById('vUrl2').value.trim();
   var order=parseInt(document.getElementById('vOrder').value)||1;
   var errEl=document.getElementById('formError');
   if(!title){errEl.textContent='⚠️ العنوان مطلوب!';return;}
-  var urls=getPartUrls();
-  if(!urls.length){errEl.textContent='⚠️ رابط الجزء الأول مطلوب!';return;}
-  var data={title:title,url1:urls[0],order:order,updatedAt:Date.now()};
-  // save url2..urlN dynamically
-  for(var i=1;i<urls.length;i++){data['url'+(i+1)]=urls[i];}
+  if(!url1){errEl.textContent='⚠️ رابط الجزء الأول مطلوب!';return;}
+  var data={title:title,url1:toEmbed(url1),order:order,updatedAt:Date.now()};
+  if(url2)data.url2=toEmbed(url2);
   if(saveTarget==='review'){
     var vid=editingReviewVid||('v'+Date.now());
     db.ref('reviews/'+currentReviewCode+'/videos/'+vid).set(data).then(function(){
@@ -584,9 +616,6 @@ function saveVideo(){
       closeVideoModal();showToast(editingId?'✅ تم التحديث!':'✅ تم إضافة الفيديو!');
     }).catch(function(e){errEl.textContent='❌ '+e.message;});
   }
-}
-function countParts(v){
-  var c=0;for(var k in v){if(/^url\d+$/.test(k)&&v[k])c++;}return c||1;
 }
 </script>
 </body>
