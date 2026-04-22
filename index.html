@@ -93,6 +93,13 @@ tbody tr:last-child td{border-bottom:none;}
 .btn-remove-part:hover{background:var(--danger);color:#fff;}
 .btn-add-part{display:flex;align-items:center;gap:.4rem;background:none;border:1.5px dashed var(--primary);color:var(--primary);padding:.45rem 1.2rem;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.9rem;font-weight:700;margin-bottom:.5rem;transition:background .15s;}
 .btn-add-part:hover{background:#fff0f0;}
+.drag-handle{cursor:grab;color:#bbb;padding:0 .3rem;font-size:1rem;flex-shrink:0;user-select:none;touch-action:none;}
+.drag-handle:hover{color:#888;}
+.drag-handle:active{cursor:grabbing;}
+.part-row.dragging{opacity:.4;border:2px dashed var(--primary);}
+.part-row.drag-over{border:2px solid var(--primary);background:#fff0f0;transform:scale(1.01);transition:transform .1s;}
+.parts-hint{font-size:.75rem;color:#bbb;margin-bottom:.4rem;text-align:center;}
+
 
 .modal-footer{display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;}
 .btn-save{padding:.7rem 2rem;background:var(--primary);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:1rem;font-weight:700;}
@@ -249,7 +256,8 @@ tbody tr:last-child td{border-bottom:none;}
       <input type="number" id="vOrder" min="1" placeholder="1" style="width:130px">
     </div>
 
-    <div style="font-size:.88rem;font-weight:700;color:#555;margin-bottom:.6rem;">🔗 روابط Drive (الأجزاء)</div>
+    <div style="font-size:.88rem;font-weight:700;color:#555;margin-bottom:.3rem;">🔗 روابط Drive (الأجزاء)</div>
+    <div class="parts-hint">☰ اسحب الأجزاء لتغيير ترتيبها</div>
     <div class="parts-container" id="partsContainer"></div>
     <button class="btn-add-part" onclick="addPartRow()"><i class="fas fa-plus"></i> إضافة جزء</button>
 
@@ -442,15 +450,78 @@ function addPartRow(val, titleVal){
   var idx = container.querySelectorAll('.part-row').length + 1;
   var row = document.createElement('div');
   row.className = 'part-row';
+  row.draggable = true;
   var defaultTitle = 'الجزء ' + idx;
   row.innerHTML =
+    '<span class="drag-handle" title="اسحب لتغيير الترتيب">☰</span>' +
     '<span class="part-label">🔗 جزء ' + idx + '</span>' +
     '<input type="text" class="part-title-input" placeholder="' + defaultTitle + '" value="' + (titleVal||'') + '" title="اسم الجزء (اختياري)">' +
     '<input type="text" class="part-url-input" placeholder="https://drive.google.com/file/d/..." dir="ltr" value="' + (val||'') + '">' +
     (idx > 1
       ? '<button class="btn-remove-part" onclick="removePartRow(this)" title="حذف الجزء"><i class="fas fa-times"></i></button>'
       : '<span style="width:34px;display:inline-block"></span>');
+  attachDragEvents(row);
   container.appendChild(row);
+}
+
+// Drag & Drop logic
+var dragSrc = null;
+function attachDragEvents(row){
+  row.addEventListener('dragstart', function(e){
+    dragSrc = row;
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  row.addEventListener('dragend', function(){
+    row.classList.remove('dragging');
+    document.querySelectorAll('#partsContainer .part-row').forEach(function(r){ r.classList.remove('drag-over'); });
+    renumberParts();
+  });
+  row.addEventListener('dragover', function(e){
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if(row !== dragSrc){
+      document.querySelectorAll('#partsContainer .part-row').forEach(function(r){ r.classList.remove('drag-over'); });
+      row.classList.add('drag-over');
+    }
+  });
+  row.addEventListener('drop', function(e){
+    e.preventDefault();
+    if(dragSrc && dragSrc !== row){
+      var container = document.getElementById('partsContainer');
+      var rows = Array.from(container.querySelectorAll('.part-row'));
+      var srcIdx = rows.indexOf(dragSrc);
+      var tgtIdx = rows.indexOf(row);
+      if(srcIdx < tgtIdx){ container.insertBefore(dragSrc, row.nextSibling); }
+      else { container.insertBefore(dragSrc, row); }
+    }
+    row.classList.remove('drag-over');
+  });
+}
+
+function renumberParts(){
+  var rows = document.querySelectorAll('#partsContainer .part-row');
+  rows.forEach(function(row, i){
+    var label = row.querySelector('.part-label');
+    if(label) label.textContent = '🔗 جزء ' + (i+1);
+    // update remove button visibility
+    var removeBtn = row.querySelector('.btn-remove-part');
+    var placeholder = row.querySelector('span[style*="width:34px"]');
+    if(i === 0 && removeBtn){
+      // replace with spacer
+      var spacer = document.createElement('span');
+      spacer.style.cssText = 'width:34px;display:inline-block';
+      removeBtn.replaceWith(spacer);
+    } else if(i > 0 && placeholder){
+      // replace spacer with remove button
+      var btn = document.createElement('button');
+      btn.className = 'btn-remove-part';
+      btn.title = 'حذف الجزء';
+      btn.innerHTML = '<i class="fas fa-times"></i>';
+      btn.onclick = function(){ removePartRow(this); };
+      placeholder.replaceWith(btn);
+    }
+  });
 }
 
 // removePartRow: يحذف صف ويعيد ترقيم
