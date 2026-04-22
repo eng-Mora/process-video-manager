@@ -82,9 +82,12 @@ tbody tr:last-child td{border-bottom:none;}
 
 /* MULTI-PARTS */
 .parts-container{margin-bottom:1rem;}
-.part-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;background:#f8f9fa;border-radius:10px;padding:.6rem .8rem;}
-.part-row .part-label{font-size:.82rem;font-weight:700;color:var(--muted);white-space:nowrap;min-width:70px;}
-.part-row input{flex:1;padding:.6rem .9rem;border:2px solid var(--border);border-radius:8px;font-family:Tajawal,sans-serif;font-size:.9rem;direction:ltr;}
+.part-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;background:#f8f9fa;border-radius:10px;padding:.6rem .8rem;flex-wrap:wrap;}
+.part-row .part-label{font-size:.82rem;font-weight:700;color:var(--muted);white-space:nowrap;min-width:60px;}
+.part-row .part-title-input{width:130px;padding:.5rem .7rem;border:2px solid var(--border);border-radius:8px;font-family:Tajawal,sans-serif;font-size:.82rem;direction:rtl;color:var(--text);background:#fff;}
+.part-row .part-title-input:focus{outline:none;border-color:var(--primary);}
+.part-row .part-title-input::placeholder{color:#bbb;}
+.part-row input.part-url-input{flex:1;min-width:120px;padding:.6rem .9rem;border:2px solid var(--border);border-radius:8px;font-family:Tajawal,sans-serif;font-size:.9rem;direction:ltr;}
 .part-row input:focus{outline:none;border-color:var(--primary);}
 .btn-remove-part{background:#fde8e8;color:var(--danger);border:none;padding:.35rem .6rem;border-radius:7px;cursor:pointer;font-size:.85rem;flex-shrink:0;}
 .btn-remove-part:hover{background:var(--danger);color:#fff;}
@@ -416,21 +419,34 @@ function shortUrl(url){return(url||'').replace('https://drive.google.com/file/d/
 // ===================== MULTI-PART HELPERS =====================
 // getPartUrls: يجمع كل الروابط من الـ part rows
 function getPartUrls(){
-  var rows = document.querySelectorAll('#partsContainer .part-row input');
+  var rows = document.querySelectorAll('#partsContainer .part-row');
   var urls = [];
-  rows.forEach(function(inp){ urls.push(inp.value.trim()); });
+  rows.forEach(function(row){ urls.push(row.querySelector('.part-url-input').value.trim()); });
   return urls;
 }
 
+// getPartTitles: يجمع كل العناوين المخصصة من الـ part rows
+function getPartTitles(){
+  var rows = document.querySelectorAll('#partsContainer .part-row');
+  var titles = [];
+  rows.forEach(function(row, i){
+    var inp = row.querySelector('.part-title-input');
+    titles.push(inp && inp.value.trim() ? inp.value.trim() : '');
+  });
+  return titles;
+}
+
 // addPartRow: يضيف صف جزء جديد
-function addPartRow(val){
+function addPartRow(val, titleVal){
   var container = document.getElementById('partsContainer');
   var idx = container.querySelectorAll('.part-row').length + 1;
   var row = document.createElement('div');
   row.className = 'part-row';
+  var defaultTitle = 'الجزء ' + idx;
   row.innerHTML =
     '<span class="part-label">🔗 جزء ' + idx + '</span>' +
-    '<input type="text" placeholder="https://drive.google.com/file/d/..." dir="ltr" value="' + (val||'') + '">' +
+    '<input type="text" class="part-title-input" placeholder="' + defaultTitle + '" value="' + (titleVal||'') + '" title="اسم الجزء (اختياري)">' +
+    '<input type="text" class="part-url-input" placeholder="https://drive.google.com/file/d/..." dir="ltr" value="' + (val||'') + '">' +
     (idx > 1
       ? '<button class="btn-remove-part" onclick="removePartRow(this)" title="حذف الجزء"><i class="fas fa-times"></i></button>'
       : '<span style="width:34px;display:inline-block"></span>');
@@ -450,16 +466,16 @@ function removePartRow(btn){
 // initPartsFromData: يملي الروابط من بيانات الفيديو الموجودة
 function initPartsFromData(v){
   document.getElementById('partsContainer').innerHTML = '';
-  // collect all urls
-  var urls = [];
-  if(v && v.url1) urls.push(v.url1);
-  if(v && v.url2) urls.push(v.url2);
+  // collect all urls + titles
+  var parts = [];
+  if(v && v.url1) parts.push({url:v.url1, title: v.title1||''});
+  if(v && v.url2) parts.push({url:v.url2, title: v.title2||''});
   // extra parts: url3, url4 ...
   var i = 3;
-  while(v && v['url'+i]){ urls.push(v['url'+i]); i++; }
+  while(v && v['url'+i]){ parts.push({url:v['url'+i], title:v['title'+i]||''}); i++; }
 
-  if(!urls.length) urls.push(''); // على الأقل صف واحد فاضي
-  urls.forEach(function(url){ addPartRow(url); });
+  if(!parts.length) parts.push({url:'',title:''}); // على الأقل صف واحد فاضي
+  parts.forEach(function(p){ addPartRow(p.url, p.title); });
 }
 
 // ===================== TABS =====================
@@ -742,13 +758,16 @@ function saveVideo(){
   if(!title){errEl.textContent='⚠️ العنوان مطلوب!';return;}
 
   var rawUrls = getPartUrls();
-  var validUrls = rawUrls.filter(function(u){ return u.length > 0; });
-  if(!validUrls.length){errEl.textContent='⚠️ لازم تحط رابط الجزء الأول على الأقل!';return;}
+  var rawTitles = getPartTitles();
+  var validParts = [];
+  rawUrls.forEach(function(u, i){ if(u.length > 0) validParts.push({url:u, title:rawTitles[i]||''}); });
+  if(!validParts.length){errEl.textContent='⚠️ لازم تحط رابط الجزء الأول على الأقل!';return;}
 
-  // بناء data object: url1, url2, url3 ...
+  // بناء data object: url1, title1, url2, title2 ...
   var data = { title:title, order:order, updatedAt:Date.now() };
-  validUrls.forEach(function(url, i){
-    data['url'+(i+1)] = toEmbed(url);
+  validParts.forEach(function(p, i){
+    data['url'+(i+1)] = toEmbed(p.url);
+    if(p.title) data['title'+(i+1)] = p.title;
   });
 
   if(saveTarget==='review'){
