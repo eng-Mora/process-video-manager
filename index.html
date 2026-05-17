@@ -194,6 +194,8 @@ tbody tr:last-child td{border-bottom:none;}
         </div>
         <button class="btn-load" onclick="loadVideos()"><i class="fas fa-search"></i> تحميل</button>
         <button class="btn-load" style="background:#2e7d32;white-space:nowrap" onclick="openAddChapterModal()"><i class="fas fa-plus"></i> فصل جديد</button>
+        <button class="btn-load" style="background:#007bff;white-space:nowrap" onclick="openEditChapterModal()"><i class="fas fa-edit"></i> تعديل فصل</button>
+        <button class="btn-load" style="background:var(--danger);white-space:nowrap" onclick="openDeleteChapterConfirm()"><i class="fas fa-trash"></i> حذف فصل</button>
       </div>
       <div class="table-card" id="tableCard" style="display:none">
         <div class="table-header">
@@ -314,6 +316,36 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeHwAccessCodesModal()">إلغاء</button>
       <button class="btn-save" style="background:#e6a817" onclick="saveHwAccessCodes()">💾 حفظ الأكواد</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Chapter Modal -->
+<div class="modal-overlay" id="editChapterModal" style="display:none" onclick="if(event.target===this)closeEditChapterModal()">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:#007bff">✏️ تعديل اسم الفصل</h2>
+    <p style="color:#888;font-size:.85rem;margin-bottom:1.2rem">اكتب الاسم الجديد للفصل المختار</p>
+    <div class="form-group"><label>📘 الـ CODE</label><input type="text" id="editChCode" readonly style="background:#f5f5f5;color:#777;cursor:not-allowed"></div>
+    <div class="form-group"><label>✏️ الاسم الجديد *</label><input type="text" id="editChName" placeholder="مثال: الفصل التاسع" onkeydown="if(event.key==='Enter')saveEditChapter()"></div>
+    <div id="editChError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeEditChapterModal()">إلغاء</button>
+      <button class="btn-save" style="background:#007bff" onclick="saveEditChapter()">💾 حفظ التعديل</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Chapter Modal -->
+<div class="modal-overlay" id="deleteChapterModal" style="display:none" onclick="if(event.target===this)closeDeleteChapterModal()">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:var(--danger)">🗑️ حذف الفصل</h2>
+    <p style="color:#555;margin-bottom:1rem">هتحذف الفصل:</p>
+    <div style="background:#fff0f0;border:1.5px solid #ffcccc;border-radius:10px;padding:.9rem 1.2rem;margin-bottom:1rem;font-weight:700;color:var(--danger)" id="deleteChNamePreview"></div>
+    <p style="color:#c0392b;font-size:.88rem;background:#fff8f8;border-radius:8px;padding:.7rem 1rem;border:1px solid #fdd">⚠️ <strong>تحذير:</strong> الفصل هيتحذف من القائمة بس — الفيديوهات المرتبطة هتفضل في Firebase.</p>
+    <div id="deleteChError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeDeleteChapterModal()">إلغاء</button>
+      <button class="btn-save" style="background:var(--danger)" onclick="confirmDeleteChapter()">🗑️ حذف</button>
     </div>
   </div>
 </div>
@@ -611,6 +643,61 @@ function saveNewChapter() {
   }).catch(function(e) {
     document.getElementById('addChError').textContent = '❌ ' + e.message;
   });
+}
+
+// ===================== EDIT CHAPTER =====================
+function openEditChapterModal(){
+  var code = document.getElementById("codeSelect").value;
+  var sel = document.getElementById("chapterSelect");
+  var idx = sel.value;
+  if(!code){ showToast("اختر الـ CODE الأول!","warn"); return; }
+  if(!idx){ showToast("اختر الفصل اللي عايز تعدله!","warn"); return; }
+  var name = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : "";
+  document.getElementById("editChCode").value = code + " — فصل رقم " + idx;
+  document.getElementById("editChName").value = name;
+  document.getElementById("editChError").textContent = "";
+  document.getElementById("editChapterModal").style.display = "flex";
+  setTimeout(function(){ document.getElementById("editChName").focus(); document.getElementById("editChName").select(); }, 100);
+}
+function closeEditChapterModal(){ document.getElementById("editChapterModal").style.display = "none"; }
+function saveEditChapter(){
+  var code = document.getElementById("codeSelect").value;
+  var sel = document.getElementById("chapterSelect");
+  var idx = sel.value;
+  var newName = document.getElementById("editChName").value.trim();
+  if(!newName){ document.getElementById("editChError").textContent = "اكتب اسم الفصل!"; return; }
+  db.ref("chapterNames/" + code + "/" + idx).set(newName).then(function(){
+    sel.options[sel.selectedIndex].textContent = newName;
+    if(CHAPTERS[code]) CHAPTERS[code][parseInt(idx)-1] = newName;
+    closeEditChapterModal();
+    showToast("تم تعديل اسم الفصل!");
+  }).catch(function(e){ document.getElementById("editChError").textContent = e.message; });
+}
+
+// ===================== DELETE CHAPTER =====================
+function openDeleteChapterConfirm(){
+  var code = document.getElementById("codeSelect").value;
+  var sel = document.getElementById("chapterSelect");
+  var idx = sel.value;
+  if(!code){ showToast("اختر الـ CODE الأول!","warn"); return; }
+  if(!idx){ showToast("اختر الفصل اللي عايز تحذفه!","warn"); return; }
+  var name = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : "";
+  document.getElementById("deleteChNamePreview").textContent = name;
+  document.getElementById("deleteChError").textContent = "";
+  document.getElementById("deleteChapterModal").style.display = "flex";
+}
+function closeDeleteChapterModal(){ document.getElementById("deleteChapterModal").style.display = "none"; }
+function confirmDeleteChapter(){
+  var code = document.getElementById("codeSelect").value;
+  var sel = document.getElementById("chapterSelect");
+  var idx = parseInt(sel.value);
+  db.ref("chapterNames/" + code + "/" + idx).remove().then(function(){
+    sel.remove(sel.selectedIndex);
+    if(CHAPTERS[code]){ CHAPTERS[code].splice(idx-1, 1); }
+    closeDeleteChapterModal();
+    if(currentChapter == idx){ document.getElementById("tableCard").style.display="none"; currentChapter=null; allVideos={}; }
+    showToast("تم حذف الفصل!","warn");
+  }).catch(function(e){ document.getElementById("deleteChError").textContent = e.message; });
 }
 
 // ── تحميل الفصول المضافة من Firebase عند تغيير الـ CODE ──
