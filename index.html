@@ -193,6 +193,7 @@ tbody tr:last-child td{border-bottom:none;}
           <select id="chapterSelect"><option value="">-- اختر الـ CODE أولاً --</option></select>
         </div>
         <button class="btn-load" onclick="loadVideos()"><i class="fas fa-search"></i> تحميل</button>
+        <button class="btn-load" style="background:#2e7d32;white-space:nowrap" onclick="openAddChapterModal()"><i class="fas fa-plus"></i> فصل جديد</button>
       </div>
       <div class="table-card" id="tableCard" style="display:none">
         <div class="table-header">
@@ -313,6 +314,27 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeHwAccessCodesModal()">إلغاء</button>
       <button class="btn-save" style="background:#e6a817" onclick="saveHwAccessCodes()">💾 حفظ الأكواد</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Chapter Modal -->
+<div class="modal-overlay" id="addChapterModal" style="display:none" onclick="if(event.target===this)closeAddChapterModal()">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:#2e7d32">➕ إضافة فصل / سكشن جديد</h2>
+    <p style="color:#888;font-size:.85rem;margin-bottom:1.2rem">هيتضاف للـ CODE اللي اخترته — اكتب الاسم اللي هيظهر للطلاب</p>
+    <div class="form-group">
+      <label>📘 الـ CODE المختار</label>
+      <input type="text" id="newChCode" readonly style="background:#f5f5f5;color:#777;cursor:not-allowed">
+    </div>
+    <div class="form-group">
+      <label>✏️ اسم الفصل / السكشن *</label>
+      <input type="text" id="newChName" placeholder="مثال: الفصل التاسع — الموجات">
+    </div>
+    <div id="addChError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeAddChapterModal()">إلغاء</button>
+      <button class="btn-save" style="background:#2e7d32" onclick="saveNewChapter()">💾 إضافة</button>
     </div>
   </div>
 </div>
@@ -549,7 +571,88 @@ function initPartsFromData(v){
   parts.forEach(function(p){ addPartRow(p.url, p.title); });
 }
 
-// ===================== TABS =====================
+// ===================== ADD NEW CHAPTER =====================
+function openAddChapterModal() {
+  var code = document.getElementById('codeSelect').value;
+  if (!code) { showToast('اختر الـ CODE الأول!', 'warn'); return; }
+  document.getElementById('newChCode').value = code;
+  document.getElementById('newChName').value = '';
+  document.getElementById('addChError').textContent = '';
+  document.getElementById('addChapterModal').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('newChName').focus(); }, 100);
+}
+function closeAddChapterModal() { document.getElementById('addChapterModal').style.display = 'none'; }
+
+function saveNewChapter() {
+  var code = document.getElementById('newChCode').value;
+  var name = document.getElementById('newChName').value.trim();
+  if (!name) { document.getElementById('addChError').textContent = '⚠️ اكتب اسم الفصل!'; return; }
+
+  // رقم الفصل الجديد = عدد الفصول الحالية + 1
+  var currentChapters = CHAPTERS[code] || [];
+  var newIdx = currentChapters.length + 1;
+
+  // احفظ في Firebase تحت chapterNames/CODE/idx
+  db.ref('chapterNames/' + code + '/' + newIdx).set(name).then(function() {
+    // أضف للـ array المحلي
+    CHAPTERS[code] = currentChapters.concat([name]);
+
+    // أضف option للـ select
+    var sel = document.getElementById('chapterSelect');
+    var o = document.createElement('option');
+    o.value = newIdx;
+    o.textContent = name;
+    sel.appendChild(o);
+    // اختره تلقائياً
+    sel.value = newIdx;
+
+    closeAddChapterModal();
+    showToast('✅ تم إضافة "' + name + '" — اضغط تحميل لإدارة فيديوهاته');
+  }).catch(function(e) {
+    document.getElementById('addChError').textContent = '❌ ' + e.message;
+  });
+}
+
+// ── تحميل الفصول المضافة من Firebase عند تغيير الـ CODE ──
+function onCodeChange() {
+  var code = document.getElementById('codeSelect').value;
+  var sel = document.getElementById('chapterSelect');
+  sel.innerHTML = '<option value="">⏳ جاري التحميل...</option>';
+  if (!code) { sel.innerHTML = '<option value="">-- اختر الـ CODE أولاً --</option>'; return; }
+
+  // جيب الأسماء المخصصة من Firebase
+  db.ref('chapterNames/' + code).once('value', function(snap) {
+    var customNames = snap.val() || {};
+    sel.innerHTML = '';
+
+    // الفصول الافتراضية
+    var defaults = CHAPTERS[code] || [];
+    // الفصول المضافة من Firebase (رقم أعلى من الافتراضية)
+    var allIdxs = new Set(defaults.map(function(_, i){ return i+1; }));
+    Object.keys(customNames).forEach(function(k){ allIdxs.add(parseInt(k)); });
+
+    // رتّب
+    var sorted = Array.from(allIdxs).sort(function(a,b){ return a-b; });
+
+    sorted.forEach(function(idx) {
+      var o = document.createElement('option');
+      o.value = idx;
+      // الأسم المخصص أولاً، ثم الافتراضي
+      o.textContent = (customNames[idx] && customNames[idx].trim())
+        ? customNames[idx]
+        : (defaults[idx-1] || 'فصل ' + idx);
+      sel.appendChild(o);
+    });
+
+    // تحديث CHAPTERS المحلي بالمضاف
+    var updatedList = sorted.map(function(idx){
+      return (customNames[idx] && customNames[idx].trim()) ? customNames[idx] : (defaults[idx-1] || 'فصل ' + idx);
+    });
+    CHAPTERS[code] = updatedList;
+  });
+}
+
+
 function switchTab(tab){
   document.getElementById('panelHomework').style.display=tab==='homework'?'block':'none';
   document.getElementById('panelReview').style.display=tab==='review'?'block':'none';
