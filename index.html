@@ -662,16 +662,6 @@ function switchTab(tab){
 }
 
 // ===================== HOMEWORK =====================
-function onCodeChange(){
-  var code=document.getElementById('codeSelect').value;
-  var sel=document.getElementById('chapterSelect');
-  sel.innerHTML='';
-  if(!code){sel.innerHTML='<option value="">-- اختر الـ CODE أولاً --</option>';return;}
-  (CHAPTERS[code]||[]).forEach(function(ch,i){
-    var o=document.createElement('option');
-    o.value=i+1;o.textContent=ch;sel.appendChild(o);
-  });
-}
 function loadVideos(){
   var code=document.getElementById('codeSelect').value;
   var idx=document.getElementById('chapterSelect').value;
