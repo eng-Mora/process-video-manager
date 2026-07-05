@@ -100,6 +100,15 @@ tbody tr:last-child td{border-bottom:none;}
 .part-row.drag-over{border:2px solid var(--primary);background:#fff0f0;transform:scale(1.01);transition:transform .1s;}
 .parts-hint{font-size:.75rem;color:#bbb;margin-bottom:.4rem;text-align:center;}
 
+/* ACCESS CODE ROWS */
+.ac-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;background:#f8f9fa;border-radius:10px;padding:.6rem .8rem;flex-wrap:wrap;}
+.ac-row input.ac-code-input{width:120px;flex-shrink:0;padding:.6rem .8rem;border:2px solid var(--border);border-radius:8px;font-family:monospace;font-size:.9rem;direction:ltr;}
+.ac-row input.ac-name-input{flex:1;min-width:120px;padding:.6rem .9rem;border:2px solid var(--border);border-radius:8px;font-family:Tajawal,sans-serif;font-size:.9rem;direction:rtl;}
+.ac-row input:focus{outline:none;border-color:#6f42c1;}
+.ac-row input.ac-code-input::placeholder,.ac-row input.ac-name-input::placeholder{color:#bbb;}
+.btn-remove-ac{background:#fde8e8;color:var(--danger);border:none;padding:.35rem .6rem;border-radius:7px;cursor:pointer;font-size:.85rem;flex-shrink:0;}
+.btn-remove-ac:hover{background:var(--danger);color:#fff;}
+
 
 .modal-footer{display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;}
 .btn-save{padding:.7rem 2rem;background:var(--primary);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:1rem;font-weight:700;}
@@ -232,6 +241,8 @@ tbody tr:last-child td{border-bottom:none;}
             <h2 id="reviewVideosTitle">فيديوهات</h2>
             <div style="display:flex;gap:.5rem">
               <button class="btn-add" style="background:#555;font-size:.85rem" onclick="openManageAccessCodes()"><i class="fas fa-key"></i> أكواد الوصول</button>
+              <button class="btn-add" style="background:#e67e22;font-size:.85rem" onclick="openTasksModal()"><i class="fas fa-tasks"></i> المهام</button>
+              <button class="btn-add" style="background:#27ae60;font-size:.85rem" onclick="openProgressModal()"><i class="fas fa-chart-bar"></i> متابعة الطلاب</button>
               <button class="btn-add" style="background:#6f42c1" onclick="openAddReviewVideo()"><i class="fas fa-plus"></i> فيديو جديد</button>
             </div>
           </div>
@@ -243,6 +254,91 @@ tbody tr:last-child td{border-bottom:none;}
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Rename Student Modal -->
+<div class="modal-overlay" id="renameStudentModal" style="display:none;z-index:1100" onclick="if(event.target===this)closeRenameStudentModal()">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:#2980b9">✏️ تغيير اسم الطالب</h2>
+    <p style="color:#888;font-size:.85rem;margin-bottom:1rem">الاسم ده هيظهر في متابعة الطلاب بدل الكود</p>
+    <div class="form-group">
+      <label>🔑 الكود</label>
+      <input type="text" id="renameStudentCode" readonly style="background:#f5f5f5;color:#999;cursor:not-allowed">
+    </div>
+    <div class="form-group">
+      <label>👤 الاسم *</label>
+      <input type="text" id="renameStudentName" placeholder="اسم الطالب..." onkeydown="if(event.key==='Enter')saveStudentName()">
+    </div>
+    <div id="renameStudentError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeRenameStudentModal()">إلغاء</button>
+      <button class="btn-save" style="background:#2980b9" onclick="saveStudentName()">💾 حفظ الاسم</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task Details Modal -->
+<div class="modal-overlay" id="taskDetailsModal" style="display:none;z-index:1100" onclick="if(event.target===this)document.getElementById('taskDetailsModal').style.display='none'">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:#e67e22">📋 تفاصيل المهام</h2>
+    <p id="taskDetailsStudentName" style="color:#555;font-size:.9rem;margin-bottom:1rem;font-weight:700"></p>
+    <div id="taskDetailsList" style="display:flex;flex-direction:column;gap:.5rem"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('taskDetailsModal').style.display='none'">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- Watch Details Modal -->
+<div class="modal-overlay" id="watchDetailsModal" style="display:none;z-index:1100" onclick="if(event.target===this)document.getElementById('watchDetailsModal').style.display='none'">
+  <div class="modal" style="max-width:460px">
+    <h2 style="color:#27ae60">👁️ تفاصيل المشاهدة</h2>
+    <p id="watchDetailsStudentName" style="color:#555;font-size:.9rem;margin-bottom:1rem;font-weight:700"></p>
+    <div id="watchDetailsList" style="display:flex;flex-direction:column;gap:.8rem;max-height:50vh;overflow-y:auto"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('watchDetailsModal').style.display='none'">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tasks Modal (Day-Based) -->
+<div class="modal-overlay" id="tasksModal" style="display:none" onclick="if(event.target===this)closeTasksModal()">
+  <div class="modal" style="max-width:640px">
+    <h2 style="color:#e67e22">📋 إدارة المهام — بالأيام</h2>
+    <p style="color:#888;font-size:.82rem;margin-bottom:1rem">كل يوم ليه اسم وعنوان اختياري + قائمة مهامه — الطالب يقدر يتنقل بين الأيام ويخلص مهام كل يوم لوحده</p>
+
+    <!-- Days Tabs -->
+    <div id="daysTabs" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem;border-bottom:2px solid #eee;padding-bottom:.6rem"></div>
+
+    <!-- Day Editor -->
+    <div id="dayEditor" style="background:#fafafa;border-radius:12px;padding:1rem;margin-bottom:.8rem;min-height:80px">
+      <p style="color:#bbb;text-align:center;font-size:.9rem">اضغط يوم أو أضف يوم جديد</p>
+    </div>
+
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem">
+      <button onclick="addDay()" style="background:#e67e22;color:#fff;border:none;padding:.5rem 1.1rem;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;font-weight:700;font-size:.9rem"><i class="fas fa-plus"></i> يوم جديد</button>
+      <button onclick="deleteCurDay()" id="btnDelDay" style="background:#e74c3c;color:#fff;border:none;padding:.5rem 1.1rem;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;font-weight:700;font-size:.9rem;display:none"><i class="fas fa-trash"></i> حذف اليوم</button>
+    </div>
+
+    <div id="tasksError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeTasksModal()">إلغاء</button>
+      <button class="btn-save" style="background:#e67e22" onclick="saveTasks()">💾 حفظ كل المهام</button>
+    </div>
+  </div>
+</div>
+
+<!-- Progress Modal -->
+<div class="modal-overlay" id="progressModal" style="display:none" onclick="if(event.target===this)closeProgressModal()">
+  <div class="modal" style="max-width:700px">
+    <h2 style="color:#27ae60">📊 متابعة الطلاب</h2>
+    <div id="progressBody" style="margin-top:1rem">
+      <div style="text-align:center;padding:2rem;color:#888"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeProgressModal()">إغلاق</button>
+    </div>
   </div>
 </div>
 
@@ -290,9 +386,11 @@ tbody tr:last-child td{border-bottom:none;}
 <div class="modal-overlay" id="accessCodesModal" style="display:none" onclick="if(event.target===this)closeAccessCodesModal()">
   <div class="modal">
     <h2 style="color:#6f42c1">🔑 أكواد الوصول</h2>
-    <p style="color:#777;font-size:.88rem;margin-bottom:1rem">كل كود في سطر لوحده — الطالب بيدخل بيه ويشوف فيديوهات المراجعة.</p>
-    <div class="form-group"><label>📋 الأكواد</label>
-      <textarea id="accessCodesInput" rows="8" style="font-family:monospace;font-size:.9rem;resize:vertical;direction:ltr" placeholder="12345&#10;67890"></textarea>
+    <p style="color:#777;font-size:.88rem;margin-bottom:1rem">حط كود الطالب واسمه جنب بعض — يسهّل عليك معرفة كل كود لمين.</p>
+    <div class="form-group">
+      <label>📋 الأكواد والأسماء</label>
+      <div id="acCodesContainer" class="parts-container"></div>
+      <button type="button" class="btn-add-part" onclick="addAcCodeRow('','')"><i class="fas fa-plus"></i> كود جديد</button>
     </div>
     <div id="acError" class="form-error"></div>
     <div class="modal-footer">
@@ -889,6 +987,383 @@ function renderReviewTable(){
     tbody.appendChild(tr);
   });
 }
+// ══════════════════════════════
+//  TASKS MANAGEMENT
+// ══════════════════════════════
+//  TASKS — DAY-BASED SYSTEM
+// ══════════════════════════════
+// Structure: _days = [ { label:'اليوم الأول', title:'مراجعة الكهرباء', tasks:[{text:'...'}, ...] }, ... ]
+var _days = [];      // array of day objects
+var _curDay = -1;    // index of selected day
+
+function openTasksModal(){
+  if(!currentReviewCode){ showToast('افتح review code الأول!','warn'); return; }
+  db.ref('reviews/'+currentReviewCode+'/tasks').once('value', function(snap){
+    _days = [];
+    if(snap.exists()){
+      var val = snap.val();
+      // ── New format: array of days ──────────────────────────
+      if(Array.isArray(val) && val.length && val[0] && typeof val[0]==='object' && ('tasks' in val[0])){
+        _days = val.filter(Boolean);
+      }
+      // ── Old flat format: array/object of task strings → migrate to Day 1 ──
+      else {
+        var flatTasks = [];
+        if(Array.isArray(val)) flatTasks = val.filter(Boolean).map(function(t){return typeof t==='string'?{text:t}:t;});
+        else flatTasks = Object.values(val).sort(function(a,b){return(a.order||0)-(b.order||0);}).map(function(t){return {text:t.text||t};});
+        if(flatTasks.length) _days = [{label:'اليوم الأول', title:'', tasks:flatTasks}];
+      }
+    }
+    _curDay = _days.length ? 0 : -1;
+    renderDaysTabs();
+    renderDayEditor();
+    document.getElementById('tasksModal').style.display='flex';
+  });
+}
+
+function closeTasksModal(){ document.getElementById('tasksModal').style.display='none'; }
+
+// ── Tabs ──────────────────────────────────────
+function renderDaysTabs(){
+  var tabs = document.getElementById('daysTabs');
+  if(!_days.length){ tabs.innerHTML='<span style="color:#bbb;font-size:.85rem">لا يوجد أيام بعد</span>'; return; }
+  tabs.innerHTML = _days.map(function(d,i){
+    var active = i===_curDay;
+    return '<button onclick="_selectDay('+i+')" style="padding:.4rem .9rem;border-radius:8px 8px 0 0;border:2px solid '+(active?'#e67e22':'#ddd')+';border-bottom:none;background:'+(active?'#e67e22':'#fff')+';color:'+(active?'#fff':'#555')+';font-family:Tajawal,sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">'+
+      (d.label||('اليوم '+(i+1)))+
+    '</button>';
+  }).join('');
+}
+
+function _selectDay(i){
+  _saveCurrentDayFromUI(); // حفظ التعديلات قبل الانتقال
+  _curDay = i;
+  renderDaysTabs();
+  renderDayEditor();
+}
+
+function addDay(){
+  _saveCurrentDayFromUI();
+  _days.push({label:'اليوم '+(_days.length+1), title:'', tasks:[]});
+  _curDay = _days.length-1;
+  renderDaysTabs();
+  renderDayEditor();
+  // focus على اسم اليوم
+  setTimeout(function(){ var el=document.getElementById('dayLabelInput'); if(el)el.focus(); },60);
+}
+
+function deleteCurDay(){
+  if(_curDay<0||_curDay>=_days.length)return;
+  var name = _days[_curDay].label||('اليوم '+(_curDay+1));
+  if(!confirm('هتحذف "'+name+'" وكل مهامه؟'))return;
+  _days.splice(_curDay,1);
+  _curDay = _days.length ? Math.min(_curDay, _days.length-1) : -1;
+  renderDaysTabs();
+  renderDayEditor();
+}
+
+// ── Day Editor ────────────────────────────────
+function renderDayEditor(){
+  var ed = document.getElementById('dayEditor');
+  var delBtn = document.getElementById('btnDelDay');
+  if(_curDay<0||_curDay>=_days.length){
+    ed.innerHTML='<p style="color:#bbb;text-align:center;font-size:.9rem;padding:1rem 0">اضغط يوم أو أضف يوم جديد</p>';
+    if(delBtn)delBtn.style.display='none';
+    return;
+  }
+  if(delBtn)delBtn.style.display='';
+  var d = _days[_curDay];
+  var tasksHtml = (d.tasks||[]).map(function(t,i){
+    return '<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem">'+
+      '<span style="color:#aaa;font-size:.8rem;min-width:22px;text-align:center">'+(i+1)+'</span>'+
+      '<input type="text" value="'+(t.text||'').replace(/"/g,'&quot;')+'" placeholder="نص المهمة..." '+
+        'style="flex:1;padding:.45rem .7rem;border:1.5px solid #ddd;border-radius:8px;font-family:Tajawal,sans-serif;font-size:.88rem" '+
+        'id="dayTask_'+i+'" oninput="">'+
+      '<button onclick="_removeDayTask('+i+')" style="background:#fde8e8;color:#e74c3c;border:none;padding:.3rem .55rem;border-radius:7px;cursor:pointer"><i class="fas fa-times"></i></button>'+
+    '</div>';
+  }).join('');
+
+  ed.innerHTML =
+    '<div style="display:flex;gap:.6rem;margin-bottom:.7rem;flex-wrap:wrap">'+ 
+      '<div style="flex:1;min-width:120px"><label style="font-size:.78rem;font-weight:700;color:#888;display:block;margin-bottom:.25rem">📅 اسم اليوم *</label>'+
+        '<input type="text" id="dayLabelInput" value="'+(d.label||'').replace(/"/g,'&quot;')+'" placeholder="اليوم الأول" '+
+          'style="width:100%;padding:.5rem .8rem;border:2px solid #e67e22;border-radius:8px;font-family:Tajawal,sans-serif;font-size:.9rem;font-weight:700"></div>'+
+      '<div style="flex:2;min-width:140px"><label style="font-size:.78rem;font-weight:700;color:#888;display:block;margin-bottom:.25rem">📝 عنوان اليوم (اختياري)</label>'+
+        '<input type="text" id="dayTitleInput" value="'+(d.title||'').replace(/"/g,'&quot;')+'" placeholder="مثال: مراجعة الكهرباء الساكنة" '+
+          'style="width:100%;padding:.5rem .8rem;border:1.5px solid #ddd;border-radius:8px;font-family:Tajawal,sans-serif;font-size:.9rem"></div>'+
+    '</div>'+
+    '<div style="flex:3;min-width:160px"><label style="font-size:.78rem;font-weight:700;color:#888;display:block;margin-bottom:.25rem">🎉 رسالة التشجيع (لما يخلص اليوم)</label>'+
+        '<input type="text" id="daySuccessInput" value="'+(d.successMessage||'').replace(/"/g,'&quot;')+'" placeholder="مثال: أنت نجم يا باشا! 🌟" '+
+          'style="width:100%;padding:.5rem .8rem;border:1.5px solid #27ae60;border-radius:8px;font-family:Tajawal,sans-serif;font-size:.9rem"></div>'+
+    '</div>'+
+    '<div style="font-size:.8rem;font-weight:700;color:#555;margin-bottom:.4rem">📋 مهام اليوم</div>'+
+    '<div id="dayTasksList">'+tasksHtml+'</div>'+
+    '<button onclick="_addDayTask()" style="background:none;border:1.5px dashed #e67e22;color:#e67e22;padding:.38rem 1rem;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.85rem;font-weight:700;margin-top:.3rem"><i class="fas fa-plus"></i> مهمة جديدة</button>';
+}
+
+function _addDayTask(){
+  _saveCurrentDayFromUI();
+  _days[_curDay].tasks.push({text:''});
+  renderDayEditor();
+  setTimeout(function(){
+    var inputs=document.querySelectorAll('#dayTasksList input');
+    if(inputs.length) inputs[inputs.length-1].focus();
+  },50);
+}
+
+function _removeDayTask(i){
+  _saveCurrentDayFromUI();
+  _days[_curDay].tasks.splice(i,1);
+  renderDayEditor();
+}
+
+// اقرأ القيم من الـ UI وحطها في _days قبل أي انتقال أو حفظ
+function _saveCurrentDayFromUI(){
+  if(_curDay<0||_curDay>=_days.length)return;
+  var labelEl = document.getElementById('dayLabelInput');
+  var titleEl = document.getElementById('dayTitleInput');
+  if(labelEl) _days[_curDay].label = labelEl.value.trim() || ('اليوم '+(_curDay+1));
+  if(titleEl) _days[_curDay].title = titleEl.value.trim();
+  var successEl = document.getElementById('daySuccessInput');
+  if(successEl) _days[_curDay].successMessage = successEl.value.trim();
+  // اقرأ نصوص المهام
+  var taskInputs = document.querySelectorAll('#dayTasksList input[id^="dayTask_"]');
+  taskInputs.forEach(function(inp,i){
+    if(_days[_curDay].tasks[i]) _days[_curDay].tasks[i].text = inp.value.trim();
+  });
+}
+
+function saveTasks(){
+  _saveCurrentDayFromUI();
+  // تنظيف: شيل المهام الفاضية وأيام بدون مهام
+  var clean = _days.map(function(d,di){
+    return {
+      label: d.label||('اليوم '+(di+1)),
+      title: d.title||'',
+      successMessage: d.successMessage||'',
+      tasks: (d.tasks||[]).filter(function(t){return (t.text||'').trim();}).map(function(t,i){return {text:t.text.trim(),order:i};})
+    };
+  }).filter(function(d){return d.label;});
+
+  db.ref('reviews/'+currentReviewCode+'/tasks').set(clean).then(function(){
+    closeTasksModal();
+    showToast('✅ تم حفظ '+clean.length+' يوم!');
+  }).catch(function(e){ document.getElementById('tasksError').textContent='❌ '+e.message; });
+}
+
+// ══════════════════════════════
+//  PROGRESS VIEWER
+// ══════════════════════════════
+function openProgressModal(){
+  if(!currentReviewCode){ showToast('افتح review code الأول!','warn'); return; }
+  document.getElementById('progressModal').style.display='flex';
+  document.getElementById('progressBody').innerHTML='<div style="text-align:center;padding:2rem;color:#888"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+
+  // جيب أكواد الطلاب في المجموعة دي
+  db.ref('reviews/'+currentReviewCode).once('value', function(snap){
+    var rc = snap.val()||{};
+    var accessCodes = rc.accessCodes ? Object.values(rc.accessCodes) : [];
+    var tasks = [];
+    if(rc.tasks){
+      if(Array.isArray(rc.tasks)) {
+        // New format: array of days
+        if(rc.tasks.length && rc.tasks[0] && typeof rc.tasks[0]==='object' && 'tasks' in rc.tasks[0]){
+          rc.tasks.forEach(function(day){ if(day&&day.tasks) tasks = tasks.concat(day.tasks.filter(Boolean)); });
+        } else {
+          tasks = rc.tasks.filter(Boolean);
+        }
+      }
+      else tasks = Object.values(rc.tasks).sort(function(a,b){return(a.order||0)-(b.order||0);});
+    }
+    var tasksCount = tasks.length;
+
+    if(!accessCodes.length){
+      document.getElementById('progressBody').innerHTML='<p style="color:#aaa;text-align:center">مفيش أكواد في المجموعة دي</p>';
+      return;
+    }
+
+    // جيب progress كل الطلاب
+    db.ref('studentProgress').once('value', function(pSnap){
+      var allProgress = pSnap.val()||{};
+      // جيب بيانات الطلاب عشان نعرف أسمائهم
+      db.ref('students').once('value', function(sSnap){
+        var allStudents = sSnap.val()||{};
+        var rows = accessCodes.map(function(code){
+          var prog = (allProgress[code]&&allProgress[code][currentReviewCode]) || {};
+          var studentName = (allStudents[code]&&allStudents[code].name) || code;
+          var watched = prog.watched === true;
+          var tasksDone = 0;
+          if(prog.tasks && tasksCount > 0){
+            for(var i=0;i<tasksCount;i++){ if(prog.tasks[i]===true) tasksDone++; }
+          }
+          var watchedAt = prog.watchedAt ? new Date(prog.watchedAt).toLocaleDateString('ar-EG',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+          return {code:code, name:studentName, watched:watched, watchedAt:watchedAt, tasksDone:tasksDone, tasksCount:tasksCount};
+        });
+
+        // sort: الشايفين الأول
+        rows.sort(function(a,b){ return (b.watched?1:0)-(a.watched?1:0) || b.tasksDone-a.tasksDone; });
+
+        var watchedCount = rows.filter(function(r){return r.watched;}).length;
+        var html = '<div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">';
+        html += '<div style="background:#e8f5e9;border-radius:10px;padding:.6rem 1.2rem;font-weight:700;color:#27ae60">👁️ شافوا الفيديو: '+watchedCount+'/'+rows.length+'</div>';
+        if(tasksCount>0){
+          var fullDone = rows.filter(function(r){return r.tasksDone===tasksCount;}).length;
+          html += '<div style="background:#fff3e0;border-radius:10px;padding:.6rem 1.2rem;font-weight:700;color:#e67e22">✅ خلصوا المهام: '+fullDone+'/'+rows.length+'</div>';
+        }
+        html += '</div>';
+        html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.88rem">';
+        html += '<thead><tr style="background:#f5f5f5"><th style="padding:.6rem .8rem;text-align:right;border-bottom:2px solid #eee">الطالب</th><th style="padding:.6rem .8rem;text-align:right;border-bottom:2px solid #eee">الكود</th><th style="padding:.6rem .8rem;border-bottom:2px solid #eee">شاف الفيديو</th>';
+        if(tasksCount>0) html += '<th style="padding:.6rem .8rem;border-bottom:2px solid #eee">المهام</th>';
+        html += '</tr></thead><tbody>';
+        // store tasks + rows globally for task details modal
+        window._progressTasks = tasks;
+        window._progressRows = rows;
+
+        rows.forEach(function(r){
+          var watchDetailsBtn = ' <button onclick="openWatchDetails(\''+r.code+'\',\''+r.name.replace(/'/g,"\\'")+'\')" title="اعرف شاف أي جزء" style="background:#e8f5e9;border:none;color:#27ae60;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:.78rem;margin-right:4px">🔍</button>';
+          var watchCell = (r.watched
+            ? '<span style="color:#27ae60;font-weight:700">✓ نعم</span>'+(r.watchedAt?'<br><small style="color:#aaa">'+r.watchedAt+'</small>':'')
+            : '<span style="color:#e74c3c">✗ لأ</span>') + watchDetailsBtn;
+          var taskCell = '';
+          if(tasksCount>0){
+            var pct = Math.round(r.tasksDone/r.tasksCount*100);
+            var color = pct===100?'#27ae60':pct>0?'#e67e22':'#e74c3c';
+            var detailsBtn = pct < 100
+              ? ' <button onclick="openTaskDetails(\''+r.code+'\',\''+r.name.replace(/'/g,"\\'")+'\')" title="اعرف إيه المهام اللي خلصت" style="background:#fff3e0;border:none;color:#e67e22;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:.78rem;margin-right:4px">🔍</button>'
+              : '';
+            taskCell = '<td style="padding:.6rem .8rem;text-align:center">'+detailsBtn+'<span style="color:'+color+';font-weight:700">'+r.tasksDone+'/'+r.tasksCount+'</span><div style="background:#eee;border-radius:99px;height:5px;width:60px;margin:.3rem auto 0"><div style="background:'+color+';height:5px;border-radius:99px;width:'+pct+'%"></div></div></td>';
+          }
+          var nameCell = '<td style="padding:.6rem .8rem;font-weight:600">'+r.name+
+            ' <button onclick="openRenameStudent(\''+r.code+'\',\''+r.name.replace(/'/g,"\\'")+'\')" title="تغيير الاسم" style="background:#e8f4fd;border:none;color:#2980b9;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:.78rem">✏️</button></td>';
+          html += '<tr style="border-bottom:1px solid #f0f0f0">'+
+            nameCell+
+            '<td style="padding:.6rem .8rem;font-family:monospace;color:#666">'+r.code+'</td>'+
+            '<td style="padding:.6rem .8rem;text-align:center">'+watchCell+'</td>'+
+            taskCell+
+          '</tr>';
+        });
+        html += '</tbody></table></div>';
+        document.getElementById('progressBody').innerHTML = html;
+      });
+    });
+  });
+}
+function closeProgressModal(){ document.getElementById('progressModal').style.display='none'; }
+
+// ── Rename Student ──
+function openRenameStudent(code, currentName){
+  document.getElementById('renameStudentCode').value = code;
+  document.getElementById('renameStudentName').value = currentName === code ? '' : currentName;
+  document.getElementById('renameStudentError').textContent = '';
+  document.getElementById('renameStudentModal').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('renameStudentName').focus(); }, 100);
+}
+function closeRenameStudentModal(){ document.getElementById('renameStudentModal').style.display = 'none'; }
+function saveStudentName(){
+  var code = document.getElementById('renameStudentCode').value.trim();
+  var name = document.getElementById('renameStudentName').value.trim();
+  if(!name){ document.getElementById('renameStudentError').textContent = '⚠️ اكتب اسم الطالب!'; return; }
+  db.ref('students/'+code+'/name').set(name).then(function(){
+    closeRenameStudentModal();
+    showToast('✅ تم حفظ اسم "'+name+'"!');
+    // refresh progress modal
+    openProgressModal();
+  }).catch(function(e){ document.getElementById('renameStudentError').textContent = '❌ '+e.message; });
+}
+
+// ── Watch Details ──
+function openWatchDetails(code, studentName){
+  document.getElementById('watchDetailsStudentName').textContent = '👤 '+studentName+' ('+code+')';
+  document.getElementById('watchDetailsList').innerHTML = '<p style="color:#aaa;text-align:center">⏳ جاري التحميل...</p>';
+  document.getElementById('watchDetailsModal').style.display = 'flex';
+
+  db.ref('studentProgress/'+code+'/'+currentReviewCode+'/watchedParts').once('value', function(wpSnap){
+    var watchedParts = wpSnap.val() || {};
+
+    var videosPromise = Object.keys(reviewVideos).length
+      ? Promise.resolve(reviewVideos)
+      : db.ref('reviews/'+currentReviewCode+'/videos').once('value').then(function(s){ return s.val()||{}; });
+
+    videosPromise.then(function(videosObj){
+      renderWatchDetailsHtml(videosObj, watchedParts);
+    });
+  });
+}
+function renderWatchDetailsHtml(videosObj, watchedParts){
+  var entries = Object.entries(videosObj).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+
+  if(!entries.length){
+    document.getElementById('watchDetailsList').innerHTML = '<p style="color:#aaa;text-align:center">لا يوجد فيديوهات في المجموعة دي</p>';
+    return;
+  }
+
+  var html = entries.map(function(entry){
+    var vid = entry[0], v = entry[1];
+    var partsCount = 0, i = 1;
+    while(v['url'+i]){ partsCount++; i++; }
+    if(!partsCount) partsCount = 1;
+
+    var watchedForVideo = watchedParts[vid] || {};
+    var partsHtml = '';
+    for(var p=1;p<=partsCount;p++){
+      var done = watchedForVideo[p] === true;
+      var partTitle = v['title'+p] || ('الجزء '+p);
+      partsHtml += '<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border-radius:7px;background:'+(done?'#e8f5e9':'#fde8e8')+';margin-bottom:.3rem">'+
+        '<span style="font-size:1rem">'+(done?'✅':'❌')+'</span>'+
+        '<span style="font-size:.85rem;color:'+(done?'#27ae60':'#c0392b')+'">'+partTitle+'</span>'+
+      '</div>';
+    }
+
+    return '<div style="border:1px solid #eee;border-radius:10px;padding:.8rem .9rem">'+
+      '<div style="font-weight:700;color:#6f42c1;margin-bottom:.5rem">🎬 '+(v.title||'')+'</div>'+
+      partsHtml+
+    '</div>';
+  }).join('');
+
+  document.getElementById('watchDetailsList').innerHTML = html;
+}
+
+
+function openTaskDetails(code, studentName){
+  document.getElementById('taskDetailsStudentName').textContent = '👤 '+studentName+' ('+code+')';
+  var tasks = window._progressTasks || [];
+  document.getElementById('taskDetailsModal').style.display = 'flex';
+
+  db.ref('studentProgress/'+code+'/'+currentReviewCode+'/tasks').once('value', function(snap){
+    var doneTasks = snap.val() || {};
+    // doneTasks may be flat {0:true,1:true,...} or day-based {d0:{0:true,...}, d1:{...}}
+    var html = '';
+    if(tasks.length && tasks[0] && typeof tasks[0]==='object' && 'tasks' in tasks[0]){
+      // day-based display
+      var flatIdx = 0;
+      html = tasks.map(function(day, di){
+        var dayDone = doneTasks['d'+di] || {};
+        var dayHtml = (day.tasks||[]).map(function(t, ti){
+          var done = dayDone[ti]===true;
+          return '<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;border-radius:7px;background:'+(done?'#e8f5e9':'#fde8e8')+';margin-bottom:.3rem">'+
+            '<span>'+(done?'✅':'❌')+'</span>'+
+            '<span style="font-size:.88rem;color:'+(done?'#27ae60':'#c0392b')+'">'+(t.text||'مهمة '+(ti+1))+'</span>'+
+          '</div>';
+        }).join('');
+        return '<div style="margin-bottom:.6rem">'+
+          '<div style="font-weight:700;color:#e67e22;font-size:.85rem;margin-bottom:.3rem">📅 '+(day.label||'اليوم '+(di+1))+(day.title?' — '+day.title:'')+'</div>'+
+          dayHtml+
+        '</div>';
+      }).join('');
+    } else {
+      // flat fallback
+      html = tasks.map(function(t, i){
+        var done = doneTasks[i] === true;
+        return '<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .7rem;border-radius:8px;background:'+(done?'#e8f5e9':'#fde8e8')+';margin-bottom:.35rem">'+
+          '<span style="font-size:1.1rem">'+(done?'✅':'❌')+'</span>'+
+          '<span style="font-size:.9rem;color:'+(done?'#27ae60':'#c0392b')+'">'+(t.text||t||'مهمة '+(i+1))+'</span>'+
+        '</div>';
+      }).join('');
+    }
+    document.getElementById('taskDetailsList').innerHTML = html || '<p style="color:#aaa">لا توجد مهام</p>';
+  });
+}
+
 function openAddReviewCode(){
   document.getElementById('rcCode').value='';document.getElementById('rcDesc').value='';
   document.getElementById('rcError').textContent='';
@@ -912,21 +1387,61 @@ function deleteReviewCode(rcId){
 }
 function openManageAccessCodes(){
   if(!currentReviewCode)return;
+  document.getElementById('acError').textContent='';
+  document.getElementById('acCodesContainer').innerHTML='<p style="color:#aaa;font-size:.85rem;text-align:center">⏳ جاري التحميل...</p>';
+  document.getElementById('accessCodesModal').style.display='flex';
   db.ref('reviews/'+currentReviewCode+'/accessCodes').once('value',function(snap){
     var data=snap.val()||{};
-    document.getElementById('accessCodesInput').value=Object.values(data).join('\n');
-    document.getElementById('acError').textContent='';
-    document.getElementById('accessCodesModal').style.display='flex';
+    var codes=Object.values(data);
+    document.getElementById('acCodesContainer').innerHTML='';
+    if(!codes.length){
+      addAcCodeRow('','');
+    } else {
+      // جيب أسماء الطلاب المرتبطة بالأكواد دي
+      db.ref('students').once('value',function(sSnap){
+        var allStudents=sSnap.val()||{};
+        document.getElementById('acCodesContainer').innerHTML='';
+        codes.forEach(function(code){
+          var name=(allStudents[code]&&allStudents[code].name)||'';
+          addAcCodeRow(code,name);
+        });
+      });
+    }
   });
+}
+function addAcCodeRow(codeVal,nameVal){
+  var container=document.getElementById('acCodesContainer');
+  var row=document.createElement('div');
+  row.className='ac-row';
+  row.innerHTML=
+    '<input type="text" class="ac-code-input" placeholder="الكود" dir="ltr" value="'+(codeVal||'')+'">'+
+    '<input type="text" class="ac-name-input" placeholder="اسم الطالب (اختياري)" value="'+(nameVal||'')+'">'+
+    '<button type="button" class="btn-remove-ac" onclick="this.closest(\'.ac-row\').remove()" title="حذف"><i class="fas fa-times"></i></button>';
+  container.appendChild(row);
 }
 function closeAccessCodesModal(){document.getElementById('accessCodesModal').style.display='none';}
 function saveAccessCodes(){
-  var raw=document.getElementById('accessCodesInput').value;
-  var codes=raw.split('\n').map(function(c){return c.trim();}).filter(Boolean);
-  if(!codes.length){document.getElementById('acError').textContent='⚠️ حط كود واحد على الأقل!';return;}
-  var obj={};codes.forEach(function(c,i){obj['c'+i]=c;});
+  var rows=document.querySelectorAll('#acCodesContainer .ac-row');
+  var entries=[];
+  rows.forEach(function(row){
+    var code=row.querySelector('.ac-code-input').value.trim();
+    var name=row.querySelector('.ac-name-input').value.trim();
+    if(code) entries.push({code:code,name:name});
+  });
+  if(!entries.length){document.getElementById('acError').textContent='⚠️ حط كود واحد على الأقل!';return;}
+
+  var obj={};entries.forEach(function(e,i){obj['c'+i]=e.code;});
   db.ref('reviews/'+currentReviewCode+'/accessCodes').set(obj).then(function(){
-    closeAccessCodesModal();showToast('✅ تم حفظ '+codes.length+' كود!');
+    // حفظ/تحديث أسماء الطلاب اللي كتبت أسامهم
+    var nameUpdates={};
+    entries.forEach(function(e){ if(e.name) nameUpdates['students/'+e.code+'/name']=e.name; });
+    if(Object.keys(nameUpdates).length){
+      db.ref().update(nameUpdates).then(function(){
+        closeAccessCodesModal();showToast('✅ تم حفظ '+entries.length+' كود!');
+      }).catch(function(e){document.getElementById('acError').textContent='❌ '+e.message;});
+    } else {
+      closeAccessCodesModal();showToast('✅ تم حفظ '+entries.length+' كود!');
+    }
   }).catch(function(e){document.getElementById('acError').textContent='❌ '+e.message;});
 }
 function openAddReviewVideo(){
