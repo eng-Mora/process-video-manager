@@ -236,6 +236,18 @@ tbody tr:last-child td{border-bottom:none;}
           <tbody id="reviewCodesBody"><tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa">اضغط تاب المراجعة للتحميل</td></tr></tbody></table>
         </div>
       </div>
+
+      <div class="table-card" style="border:2px dashed #6f42c1">
+        <div class="table-header"><h2>🔎 تشخيص كود</h2></div>
+        <div style="padding:0 1rem 1rem">
+          <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+            <input type="text" id="diagCode" placeholder="اكتب الكود هنا" dir="ltr" style="flex:1;padding:.6rem;font-family:monospace;border-radius:8px;border:2px solid var(--border)">
+            <button class="btn-add" style="background:#6f42c1" onclick="runDiag()">افحص</button>
+          </div>
+          <div id="diagResult" style="font-family:monospace;font-size:.82rem;white-space:pre-wrap;word-break:break-all"></div>
+        </div>
+      </div>
+
       <div id="reviewVideosSection" style="display:none">
         <div class="table-card">
           <div class="table-header">
@@ -956,6 +968,36 @@ function deleteHw(vid){
 }
 
 // ===================== REVIEW CODES =====================
+async function runDiag(){
+  var code=document.getElementById('diagCode').value.trim();
+  var out=document.getElementById('diagResult');
+  if(!code){out.innerHTML='<span style="color:var(--danger)">اكتب كود الأول</span>';return;}
+  out.innerHTML='⏳ جاري الفحص...';
+  var lines=[];
+  var bad=/[.#$\/\[\]]/.test(code);
+  lines.push((bad?'❌':'✅')+' شكل الكود: '+code+(bad?' — فيه رمز ممنوع (. # $ / [ ]) لازم يتغير!':' — سليم'));
+  try{
+    var idxSnap=await db.ref('reviewIndex/'+code).once('value');
+    var rcId=idxSnap.val();
+    lines.push((rcId?'✅':'❌')+' reviewIndex/'+code+' → '+(rcId||'مش موجود'));
+    if(rcId){
+      var rcSnap=await db.ref('reviews/'+rcId).once('value');
+      var rc=rcSnap.val();
+      lines.push((rc?'✅':'❌')+' reviews/'+rcId+' → '+(rc?JSON.stringify({code:rc.code,desc:rc.desc,videosCount:Object.keys(rc.videos||{}).length}):'مش موجود (index يتيم)'));
+    }
+  }catch(e){lines.push('❌ خطأ قراءة reviewIndex/reviews: '+e.message);}
+  try{
+    var stSnap=await db.ref('students/'+code).once('value');
+    var st=stSnap.val();
+    lines.push(st?'ℹ️ students/'+code+' موجود كمان (كود ده مسجل كـ طالب كذلك): '+JSON.stringify(st):'ℹ️ مش موجود في students (طبيعي لو ده Review Code بحت)');
+  }catch(e){}
+  try{
+    var resp=await fetch("https://the-process-login.theprocess-amro.workers.dev/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:code})});
+    var data=await resp.json();
+    lines.push((data.type==='invalid'?'❌':'✅')+' رد اللوجين الفعلي: '+JSON.stringify(data));
+  }catch(e){lines.push('❌ فشل نداء اللوجين: '+e.message);}
+  out.innerHTML=lines.join('\n\n');
+}
 function loadReviewCodes(){
   document.getElementById('reviewCodesBody').innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr>';
   db.ref('reviews').once('value',function(snap){
