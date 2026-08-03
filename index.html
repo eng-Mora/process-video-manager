@@ -170,6 +170,7 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="tab-nav">
       <button class="tab-btn active" id="tabHomework" onclick="switchTab('homework')">📚 فيديوهات الواجب</button>
       <button class="tab-btn" id="tabReview" onclick="switchTab('review')">🎯 فيديوهات المراجعة</button>
+      <button class="tab-btn" id="tabPublic" onclick="switchTab('public')">🌐 فيديوهات عامة</button>
     </div>
 
     <!-- HOMEWORK -->
@@ -250,6 +251,25 @@ tbody tr:last-child td{border-bottom:none;}
             <table><thead><tr><th>الترتيب</th><th>العنوان</th><th>الرابط</th><th>الأجزاء</th><th>إجراءات</th></tr></thead>
             <tbody id="reviewVideoBody"></tbody></table>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PUBLIC (بدون تسجيل دخول) -->
+    <div id="panelPublic" style="display:none">
+      <div class="hint" style="border-color:#17a2b8;background:#eafaff;">
+        <strong style="color:#17a2b8">🌐 فيديوهات عامة:</strong><br>
+        الفيديوهات دي بتظهر لأي حد يفتح الموقع من غير ما يسجّل دخول — عن طريق زرار "فيديوهات" في القائمة الجانبية.<br>
+        ممكن تضيف أكتر من جزئين 🎬
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <h2>🌐 الفيديوهات العامة</h2>
+          <button class="btn-add" style="background:#17a2b8" onclick="openAddPublicVideo()"><i class="fas fa-plus"></i> فيديو جديد</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>الترتيب</th><th>العنوان</th><th>الرابط</th><th>الأجزاء</th><th>إجراءات</th></tr></thead>
+          <tbody id="publicVideoBody"><tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -555,6 +575,7 @@ var CHAPTERS = {
 
 var currentCode=null,currentChapter=null,allVideos={},editingId=null;
 var currentReviewCode=null,reviewVideos={},editingReviewVid=null;
+var publicVideos={},editingPublicVid=null;
 var saveTarget='homework';
 
 // ===================== HELPERS =====================
@@ -841,9 +862,12 @@ function onCodeChange() {
 function switchTab(tab){
   document.getElementById('panelHomework').style.display=tab==='homework'?'block':'none';
   document.getElementById('panelReview').style.display=tab==='review'?'block':'none';
+  document.getElementById('panelPublic').style.display=tab==='public'?'block':'none';
   document.getElementById('tabHomework').className='tab-btn'+(tab==='homework'?' active':'');
   document.getElementById('tabReview').className='tab-btn'+(tab==='review'?' active':'');
+  document.getElementById('tabPublic').className='tab-btn'+(tab==='public'?' active':'');
   if(tab==='review')loadReviewCodes();
+  if(tab==='public')loadPublicVideosAdmin();
 }
 
 // ===================== HOMEWORK =====================
@@ -938,6 +962,16 @@ function loadReviewCodes(){
     var data=snap.val()||{};
     var tbody=document.getElementById('reviewCodesBody');
     var entries=Object.entries(data);
+    // إصلاح تلقائي: أي Review Code قديم اتحفظ من غير reviewIndex (باگ سابق) بيتظبط هنا
+    db.ref('reviewIndex').once('value',function(idxSnap){
+      var idx=idxSnap.val()||{};
+      var fixes={};
+      entries.forEach(function(entry){
+        var rcId=entry[0],rc=entry[1];
+        if(rc.code && idx[rc.code]!==rcId) fixes['reviewIndex/'+rc.code]=rcId;
+      });
+      if(Object.keys(fixes).length) db.ref().update(fixes);
+    });
     if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa">لا يوجد Review Codes بعد</td></tr>';return;}
     tbody.innerHTML='';
     entries.forEach(function(entry){
@@ -987,6 +1021,70 @@ function renderReviewTable(){
     tbody.appendChild(tr);
   });
 }
+// ===================== PUBLIC VIDEOS (بدون تسجيل دخول) =====================
+function loadPublicVideosAdmin(){
+  document.getElementById('publicVideoBody').innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+  db.ref('publicVideos').on('value',function(snap){
+    publicVideos=snap.val()||{};renderPublicTable();
+  });
+}
+function renderPublicTable(){
+  var tbody=document.getElementById('publicVideoBody');
+  var entries=Object.entries(publicVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:3rem;color:#aaa"><i class="fas fa-video" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#ccc"></i>لا يوجد فيديوهات — اضغط "+ فيديو جديد"</td></tr>';return;}
+  tbody.innerHTML='';
+  entries.forEach(function(entry){
+    var vid=entry[0],v=entry[1];
+    var partsCount = countParts(v);
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td><span class="order-badge">'+(v.order||0)+'</span></td>'+
+      '<td><strong>'+(v.title||'')+'</strong></td>'+
+      '<td><span class="url-preview">'+shortUrl(v.url1)+'…</span></td>'+
+      '<td><span class="parts-badge">'+partsCount+' جزء</span></td>'+
+      '<td>'+
+        '<button class="btn-up" onclick="movePub(\''+vid+'\',-1)"><i class="fas fa-arrow-up"></i></button>'+
+        '<button class="btn-down" onclick="movePub(\''+vid+'\',1)"><i class="fas fa-arrow-down"></i></button>'+
+        '<button class="btn-edit" onclick="editPub(\''+vid+'\')"><i class="fas fa-edit"></i></button>'+
+        '<button class="btn-delete" onclick="deletePub(\''+vid+'\')"><i class="fas fa-trash"></i></button>'+
+      '</td>';
+    tbody.appendChild(tr);
+  });
+}
+function movePub(vid,dir){
+  var entries=Object.entries(publicVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  var idx=entries.findIndex(function(e){return e[0]===vid;});
+  var si=idx+dir;if(si<0||si>=entries.length)return;
+  db.ref('publicVideos/'+entries[idx][0]+'/order').set(entries[si][1].order||0);
+  db.ref('publicVideos/'+entries[si][0]+'/order').set(entries[idx][1].order||0);
+}
+function nextPubOrder(){var o=Object.values(publicVideos).map(function(v){return v.order||0;});return o.length?Math.max.apply(null,o)+1:1;}
+function openAddPublicVideo(){
+  saveTarget='public';editingPublicVid=null;
+  document.getElementById('modalTitle').textContent='➕ فيديو عام جديد';
+  document.getElementById('vTitle').value='';
+  document.getElementById('vOrder').value=nextPubOrder();
+  document.getElementById('formError').textContent='';
+  document.getElementById('partsContainer').innerHTML='';
+  addPartRow('');
+  document.getElementById('videoModal').style.display='flex';
+}
+function editPub(vid){
+  var v=publicVideos[vid];if(!v)return;
+  saveTarget='public';editingPublicVid=vid;
+  document.getElementById('modalTitle').textContent='✏️ تعديل الفيديو العام';
+  document.getElementById('vTitle').value=v.title||'';
+  document.getElementById('vOrder').value=v.order||1;
+  document.getElementById('formError').textContent='';
+  initPartsFromData(v);
+  document.getElementById('videoModal').style.display='flex';
+}
+function deletePub(vid){
+  var v=publicVideos[vid];if(!v)return;
+  if(!confirm('هتحذف: "'+v.title+'"؟'))return;
+  db.ref('publicVideos/'+vid).remove();
+  showToast('🗑️ تم الحذف!','warn');
+}
+
 // ══════════════════════════════
 //  TASKS MANAGEMENT
 // ══════════════════════════════
@@ -1374,13 +1472,30 @@ function saveReviewCode(){
   var code=document.getElementById('rcCode').value.trim().toUpperCase();
   var desc=document.getElementById('rcDesc').value.trim();
   if(!code){document.getElementById('rcError').textContent='⚠️ الكود مطلوب!';return;}
-  db.ref('reviews/rc_'+Date.now()).set({code:code,desc:desc}).then(function(){
-    closeReviewCodeModal();showToast('✅ تم الحفظ!');loadReviewCodes();
+  var rcId='rc_'+Date.now();
+  // تحقق إن الكود ده مش مستخدم قبل كده في review تاني (reviewIndex فريد لكل كود)
+  db.ref('reviewIndex/'+code).once('value').then(function(existing){
+    if(existing.exists()){
+      document.getElementById('rcError').textContent='⚠️ الكود ده مستخدم قبل كده في Review Code تاني!';
+      return;
+    }
+    var updates={};
+    updates['reviews/'+rcId]={code:code,desc:desc};
+    updates['reviewIndex/'+code]=rcId;
+    return db.ref().update(updates).then(function(){
+      closeReviewCodeModal();showToast('✅ تم الحفظ!');loadReviewCodes();
+    });
   }).catch(function(e){document.getElementById('rcError').textContent='❌ '+e.message;});
 }
 function deleteReviewCode(rcId){
   if(!confirm('هتحذف الـ Review Code ده وكل فيديوهاته؟'))return;
-  db.ref('reviews/'+rcId).remove().then(function(){
+  db.ref('reviews/'+rcId).once('value').then(function(snap){
+    var rc=snap.val()||{};
+    var updates={};
+    updates['reviews/'+rcId]=null;
+    if(rc.code) updates['reviewIndex/'+rc.code]=null;
+    return db.ref().update(updates);
+  }).then(function(){
     document.getElementById('reviewVideosSection').style.display='none';
     showToast('🗑️ تم الحذف!','warn');loadReviewCodes();
   });
@@ -1541,6 +1656,12 @@ function saveVideo(){
     db.ref('reviews/'+currentReviewCode+'/videos/'+vid).set(data).then(function(){
       reviewVideos[vid]=data;closeVideoModal();renderReviewTable();
       showToast(editingReviewVid?'✅ تم التحديث!':'✅ تم إضافة الفيديو!');
+    }).catch(function(e){errEl.textContent='❌ '+e.message;});
+  } else if(saveTarget==='public'){
+    var vid3=editingPublicVid||('v'+Date.now());
+    db.ref('publicVideos/'+vid3).set(data).then(function(){
+      publicVideos[vid3]=data;closeVideoModal();renderPublicTable();
+      showToast(editingPublicVid?'✅ تم التحديث!':'✅ تم إضافة الفيديو!');
     }).catch(function(e){errEl.textContent='❌ '+e.message;});
   } else {
     var vid2=editingId||('v'+Date.now());
