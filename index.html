@@ -966,11 +966,15 @@ function loadReviewCodes(){
     db.ref('reviewIndex').once('value',function(idxSnap){
       var idx=idxSnap.val()||{};
       var fixes={};
+      var skipped=[];
       entries.forEach(function(entry){
         var rcId=entry[0],rc=entry[1];
-        if(rc.code && idx[rc.code]!==rcId) fixes['reviewIndex/'+rc.code]=rcId;
+        if(!rc.code) return;
+        if(/[.#$\/\[\]]/.test(rc.code)){ skipped.push(rc.code); return; } // كود فيه رمز ممنوع في المفاتيح، متجاهلينه
+        if(idx[rc.code]!==rcId) fixes['reviewIndex/'+rc.code]=rcId;
       });
-      if(Object.keys(fixes).length) db.ref().update(fixes);
+      if(skipped.length) console.warn('Review codes فيها رموز ممنوعة (. # $ / [ ]) اتجاهلت من الإصلاح التلقائي، لازم تتغير يدويًا:', skipped);
+      if(Object.keys(fixes).length) db.ref().update(fixes).catch(function(e){ console.warn('فشل الإصلاح التلقائي:', e.message); });
     });
     if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa">لا يوجد Review Codes بعد</td></tr>';return;}
     tbody.innerHTML='';
@@ -978,12 +982,14 @@ function loadReviewCodes(){
       var rcId=entry[0],rc=entry[1];
       var vc=Object.keys(rc.videos||{}).length;
       var ac=Object.keys(rc.accessCodes||{}).length;
+      var badKey=rc.code&&/[.#$\/\[\]]/.test(rc.code);
       var tr=document.createElement('tr');
-      tr.innerHTML='<td><strong style="font-family:monospace;color:#6f42c1">'+(rc.code||rcId)+'</strong></td>'+
+      tr.innerHTML='<td><strong style="font-family:monospace;color:#6f42c1">'+(rc.code||rcId)+'</strong>'+(badKey?' <span title="الكود ده فيه رمز ممنوع (زي النقطة) وده بيمنع الطلاب من الدخول! دوس تعديل عشان تصلحه" style="color:#dc3545">⚠️</span>':'')+'</td>'+
         '<td style="color:#777;font-size:.88rem">'+(rc.desc||'—')+'</td>'+
         '<td><span class="parts-badge">'+vc+' فيديو</span></td>'+
         '<td><span class="order-badge">'+ac+' كود</span></td>'+
         '<td><button onclick="selectReviewCode(\''+rcId+'\')" style="background:#f0e8fd;color:#6f42c1;border:none;padding:.35rem .8rem;border-radius:7px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.85rem;font-weight:700"><i class="fas fa-folder-open"></i> فتح</button> '+
+        '<button onclick="editReviewCodeValue(\''+rcId+'\',\''+(rc.code||'').replace(/'/g,"\\'")+'\')" style="background:#fff3e0;color:#e67e22;border:none;padding:.35rem .6rem;border-radius:7px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.85rem;font-weight:700" title="تعديل الكود"><i class="fas fa-pen"></i></button> '+
         '<button class="btn-delete" onclick="deleteReviewCode(\''+rcId+'\')"><i class="fas fa-trash"></i></button></td>';
       tbody.appendChild(tr);
     });
@@ -1472,6 +1478,10 @@ function saveReviewCode(){
   var code=document.getElementById('rcCode').value.trim().toUpperCase();
   var desc=document.getElementById('rcDesc').value.trim();
   if(!code){document.getElementById('rcError').textContent='⚠️ الكود مطلوب!';return;}
+  if(/[.#$\/\[\]]/.test(code)){
+    document.getElementById('rcError').textContent='⚠️ الكود مينفعش يحتوي على أي من الرموز دي: . # $ / [ ] — جرب مثلاً "2SEC" بدل "2.SEC"';
+    return;
+  }
   var rcId='rc_'+Date.now();
   // تحقق إن الكود ده مش مستخدم قبل كده في review تاني (reviewIndex فريد لكل كود)
   db.ref('reviewIndex/'+code).once('value').then(function(existing){
@@ -1489,16 +1499,37 @@ function saveReviewCode(){
 }
 function deleteReviewCode(rcId){
   if(!confirm('هتحذف الـ Review Code ده وكل فيديوهاته؟'))return;
+
   db.ref('reviews/'+rcId).once('value').then(function(snap){
     var rc=snap.val()||{};
     var updates={};
     updates['reviews/'+rcId]=null;
-    if(rc.code) updates['reviewIndex/'+rc.code]=null;
+    if(rc.code && !/[.#$\/\[\]]/.test(rc.code)) updates['reviewIndex/'+rc.code]=null;
     return db.ref().update(updates);
   }).then(function(){
     document.getElementById('reviewVideosSection').style.display='none';
     showToast('🗑️ تم الحذف!','warn');loadReviewCodes();
   });
+}
+function editReviewCodeValue(rcId,oldCode){
+  var newCode=prompt('اكتب الكود الجديد (من غير مسافات أو رموز زي . # $ / [ ]):', oldCode||'');
+  if(newCode===null) return;
+  newCode=newCode.trim().toUpperCase();
+  if(!newCode){ showToast('الكود مينفعش يبقى فاضي','warn'); return; }
+  if(/[.#$\/\[\]]/.test(newCode)){ showToast('⚠️ لسه فيه رمز ممنوع (. # $ / [ ])، شيله وحاول تاني','warn'); return; }
+  db.ref('reviewIndex/'+newCode).once('value').then(function(existing){
+    if(existing.exists() && existing.val()!==rcId){
+      showToast('⚠️ الكود ده مستخدم قبل كده في Review Code تاني!','warn');
+      return;
+    }
+    var updates={};
+    updates['reviews/'+rcId+'/code']=newCode;
+    updates['reviewIndex/'+newCode]=rcId;
+    if(oldCode && !/[.#$\/\[\]]/.test(oldCode) && oldCode!==newCode) updates['reviewIndex/'+oldCode]=null;
+    return db.ref().update(updates).then(function(){
+      showToast('✅ اتصلح! الكود بقى: '+newCode);loadReviewCodes();
+    });
+  }).catch(function(e){ showToast('❌ '+e.message,'warn'); });
 }
 function openManageAccessCodes(){
   if(!currentReviewCode)return;
