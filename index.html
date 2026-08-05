@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--primary:#800000;--primary-light:#a00000;--gold:#D4AF37;--bg:#f0f2f5;--card:#fff;--border:#e0e0e0;--text:#333;--muted:#777;--danger:#dc3545;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -123,6 +124,16 @@ tbody tr:last-child td{border-bottom:none;}
 </style>
 </head>
 <body>
+<input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none">
+<div class="modal-overlay" id="importSummaryModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:480px">
+    <h2>📥 نتيجة الاستيراد</h2>
+    <div id="importSummaryBody" style="font-family:Tajawal,sans-serif;line-height:1.9;max-height:50vh;overflow-y:auto"></div>
+    <div style="margin-top:1.2rem;text-align:left">
+      <button class="btn-add" onclick="document.getElementById('importSummaryModal').style.display='none'">تمام</button>
+    </div>
+  </div>
+</div>
 
 <!-- AUTH SCREEN -->
 <div id="authScreen">
@@ -157,6 +168,9 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="header-title">🎬 إدارة <span>الفيديوهات</span></div>
     <div style="display:flex;gap:.6rem;align-items:center">
       <span id="loggedInEmail" style="font-size:.82rem;color:rgba(255,255,255,.65);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <button class="back-btn" onclick="exportAllToExcel()" style="background:rgba(13,110,253,.25);border-color:rgba(13,110,253,.5)">
+        <i class="fas fa-download"></i> تحميل كل الفيديوهات
+      </button>
       <a href="admin.html" style="text-decoration:none">
         <button class="back-btn"><i class="fas fa-arrow-right"></i> لوحة التحكم</button>
       </a>
@@ -210,7 +224,11 @@ tbody tr:last-child td{border-bottom:none;}
       <div class="table-card" id="tableCard" style="display:none">
         <div class="table-header">
           <h2 id="tableTitle">الفيديوهات</h2>
-          <button class="btn-add" onclick="openAddModal()"><i class="fas fa-plus"></i> فيديو جديد</button>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn-add" style="background:#0d6efd" onclick="exportToExcel('homework')"><i class="fas fa-download"></i> تحميل Excel</button>
+            <button class="btn-add" style="background:#1d7a46" onclick="triggerImport('homework')"><i class="fas fa-file-excel"></i> استيراد من Excel</button>
+            <button class="btn-add" onclick="openAddModal()"><i class="fas fa-plus"></i> فيديو جديد</button>
+          </div>
         </div>
         <div style="overflow-x:auto">
           <table><thead><tr><th>الترتيب</th><th>العنوان</th><th>الرابط</th><th>الأجزاء</th><th>أكواد</th><th>إجراءات</th></tr></thead>
@@ -256,6 +274,8 @@ tbody tr:last-child td{border-bottom:none;}
               <button class="btn-add" style="background:#555;font-size:.85rem" onclick="openManageAccessCodes()"><i class="fas fa-key"></i> أكواد الوصول</button>
               <button class="btn-add" style="background:#e67e22;font-size:.85rem" onclick="openTasksModal()"><i class="fas fa-tasks"></i> المهام</button>
               <button class="btn-add" style="background:#27ae60;font-size:.85rem" onclick="openProgressModal()"><i class="fas fa-chart-bar"></i> متابعة الطلاب</button>
+              <button class="btn-add" style="background:#0d6efd;font-size:.85rem" onclick="exportToExcel('review')"><i class="fas fa-download"></i> تحميل Excel</button>
+              <button class="btn-add" style="background:#1d7a46;font-size:.85rem" onclick="triggerImport('review')"><i class="fas fa-file-excel"></i> استيراد من Excel</button>
               <button class="btn-add" style="background:#6f42c1" onclick="openAddReviewVideo()"><i class="fas fa-plus"></i> فيديو جديد</button>
             </div>
           </div>
@@ -277,7 +297,11 @@ tbody tr:last-child td{border-bottom:none;}
       <div class="table-card">
         <div class="table-header">
           <h2>🌐 الفيديوهات العامة</h2>
-          <button class="btn-add" style="background:#17a2b8" onclick="openAddPublicVideo()"><i class="fas fa-plus"></i> فيديو جديد</button>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn-add" style="background:#0d6efd" onclick="exportToExcel('public')"><i class="fas fa-download"></i> تحميل Excel</button>
+            <button class="btn-add" style="background:#1d7a46" onclick="triggerImport('public')"><i class="fas fa-file-excel"></i> استيراد من Excel</button>
+            <button class="btn-add" style="background:#17a2b8" onclick="openAddPublicVideo()"><i class="fas fa-plus"></i> فيديو جديد</button>
+          </div>
         </div>
         <div style="overflow-x:auto">
           <table><thead><tr><th>الترتيب</th><th>العنوان</th><th>الرابط</th><th>الأجزاء</th><th>إجراءات</th></tr></thead>
@@ -606,6 +630,189 @@ function showToast(msg,type){
   t.textContent=msg;
   t.className='toast show'+(type?' '+type:'');
   setTimeout(function(){t.classList.remove('show');},3000);
+}
+
+// ===================== EXCEL EXPORT (الكل مرة واحدة) =====================
+async function exportAllToExcel(){
+  showToast('⏳ بجهز الملف، ثواني...');
+  try{
+    var results=await Promise.all([
+      db.ref('videos').once('value'),
+      db.ref('reviews').once('value'),
+      db.ref('publicVideos').once('value')
+    ]);
+    var videosData=results[0].val()||{};
+    var reviewsData=results[1].val()||{};
+    var publicData=results[2].val()||{};
+
+    var hwRows=[];
+    Object.keys(videosData).forEach(function(code){
+      var chapters=videosData[code]||{};
+      Object.keys(chapters).forEach(function(chKey){
+        var vids=chapters[chKey]||{};
+        Object.values(vids).forEach(function(v){
+          hwRows.push({'الكود':code,'الفصل':chKey.replace('ch',''),'الترتيب':v.order||'','العنوان':v.title||'','الرابط':v.url1||''});
+        });
+      });
+    });
+    hwRows.sort(function(a,b){
+      var ka=a['الكود']+'-'+a['الفصل'], kb=b['الكود']+'-'+b['الفصل'];
+      return ka<kb?-1:ka>kb?1:(a['الترتيب']-b['الترتيب']);
+    });
+
+    var rvRows=[];
+    Object.keys(reviewsData).forEach(function(rcId){
+      var rc=reviewsData[rcId]||{};
+      var vids=rc.videos||{};
+      Object.values(vids).forEach(function(v){
+        rvRows.push({'كود المراجعة':rc.code||rcId,'الوصف':rc.desc||'','الترتيب':v.order||'','العنوان':v.title||'','الرابط':v.url1||''});
+      });
+    });
+    rvRows.sort(function(a,b){
+      var ka=a['كود المراجعة'], kb=b['كود المراجعة'];
+      return ka<kb?-1:ka>kb?1:(a['الترتيب']-b['الترتيب']);
+    });
+
+    var pubRows=Object.values(publicData).map(function(v){
+      return {'الترتيب':v.order||'','العنوان':v.title||'','الرابط':v.url1||''};
+    }).sort(function(a,b){return(a['الترتيب']||0)-(b['الترتيب']||0);});
+
+    var wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(hwRows.length?hwRows:[{'ملحوظة':'مفيش فيديوهات واجب'}]),'فيديوهات الواجب');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rvRows.length?rvRows:[{'ملحوظة':'مفيش فيديوهات مراجعة'}]),'فيديوهات المراجعة');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(pubRows.length?pubRows:[{'ملحوظة':'مفيش فيديوهات عامة'}]),'فيديوهات عامة');
+    XLSX.writeFile(wb,'كل-الفيديوهات.xlsx');
+    showToast('✅ نزل الملف!');
+  }catch(e){
+    showToast('❌ فشل التحميل: '+e.message,'warn');
+  }
+}
+
+// ===================== EXCEL EXPORT =====================
+function exportToExcel(target){
+  var source, filename;
+  if(target==='review'){
+    if(!currentReviewCode){ showToast('افتح Review Code الأول!','warn'); return; }
+    source=reviewVideos; filename='مراجعة-'+currentReviewCode+'.xlsx';
+  }else if(target==='public'){
+    source=publicVideos; filename='فيديوهات-عامة.xlsx';
+  }else{
+    if(!currentCode || currentChapter===null){ showToast('اختار الـ CODE والفصل الأول!','warn'); return; }
+    source=allVideos; filename='واجب-'+currentCode+'-فصل'+currentChapter+'.xlsx';
+  }
+
+  var list=Object.values(source||{});
+  if(!list.length){ showToast('مفيش فيديوهات هنا عشان تنزلها!','warn'); return; }
+  list.sort(function(a,b){return(a.order||0)-(b.order||0);});
+
+  // اكتشف أقصى عدد أجزاء موجود عشان نضيف أعمدة الرابط الإضافية لو محتاجين
+  var maxParts=1;
+  list.forEach(function(v){
+    for(var i=2;i<=10;i++){ if(v['url'+i]) maxParts=Math.max(maxParts,i); }
+  });
+
+  var rows=list.map(function(v){
+    var row={ 'الترتيب':v.order||'', 'العنوان':v.title||'', 'الرابط':v.url1||'' };
+    for(var i=2;i<=maxParts;i++){ row['الرابط'+i]=v['url'+i]||''; }
+    return row;
+  });
+
+  var ws=XLSX.utils.json_to_sheet(rows);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'الفيديوهات');
+  XLSX.writeFile(wb,filename);
+}
+
+// ===================== EXCEL IMPORT =====================
+var importTarget=null;
+function triggerImport(target){
+  if(target==='homework' && (!currentCode || currentChapter===null)){
+    showToast('اختار الـ CODE والفصل الأول!','warn');return;
+  }
+  if(target==='review' && !currentReviewCode){
+    showToast('افتح Review Code الأول!','warn');return;
+  }
+  importTarget=target;
+  document.getElementById('importFileInput').value='';
+  document.getElementById('importFileInput').click();
+}
+document.getElementById('importFileInput').addEventListener('change', function(e){
+  var file=e.target.files[0];
+  if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(evt){
+    try{
+      var wb=XLSX.read(evt.target.result,{type:'binary'});
+      var sheet=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+      processImportRows(rows);
+    }catch(err){
+      showToast('❌ مقدرتش أقرا الملف: '+err.message,'warn');
+    }
+  };
+  reader.readAsBinaryString(file);
+});
+function findCol(row,names){
+  var keys=Object.keys(row);
+  for(var i=0;i<names.length;i++){
+    var key=keys.find(function(k){return k.trim().toLowerCase()===names[i];});
+    if(key) return key;
+  }
+  return null;
+}
+function processImportRows(rows){
+  if(!rows.length){showToast('⚠️ الشيت فاضية!','warn');return;}
+  var titleKey=findCol(rows[0],['العنوان','عنوان','title']);
+  var linkKey=findCol(rows[0],['الرابط','رابط','link','url']);
+  var orderKey=findCol(rows[0],['الترتيب','ترتيب','order']);
+  if(!titleKey||!linkKey){
+    showToast('⚠️ لازم عمود "العنوان" وعمود "الرابط" في أول صف!','warn');return;
+  }
+
+  var basePath, existing, startOrder;
+  if(importTarget==='review'){
+    basePath='reviews/'+currentReviewCode+'/videos';
+    existing=reviewVideos;
+  }else if(importTarget==='public'){
+    basePath='publicVideos';
+    existing=publicVideos;
+  }else{
+    basePath='videos/'+currentCode+'/ch'+currentChapter;
+    existing=allVideos;
+  }
+  var orders=Object.values(existing||{}).map(function(v){return v.order||0;});
+  startOrder=orders.length?Math.max.apply(null,orders):0;
+
+  var updates={};
+  var added=0, skipped=[];
+  rows.forEach(function(row,i){
+    var title=String(row[titleKey]||'').trim();
+    var link=String(row[linkKey]||'').trim();
+    if(!title || !link){ skipped.push('صف '+(i+2)+' (ناقص عنوان أو رابط)'); return; }
+    var order=orderKey && row[orderKey]!=='' ? parseInt(row[orderKey])||(startOrder+added+1) : (startOrder+added+1);
+    var vid='v'+(Date.now()+i);
+    updates[basePath+'/'+vid]={ title:title, order:order, url1:toEmbed(link), updatedAt:Date.now() };
+    added++;
+  });
+
+  if(!added){
+    document.getElementById('importSummaryBody').innerHTML='<span style="color:var(--danger)">مفيش ولا صف صالح للاستيراد.</span>'+(skipped.length?'<br><br>الأسباب:<br>'+skipped.join('<br>'):'');
+    document.getElementById('importSummaryModal').style.display='flex';
+    return;
+  }
+
+  db.ref().update(updates).then(function(){
+    var summary='✅ تم استيراد <b>'+added+'</b> فيديو بنجاح!';
+    if(skipped.length) summary+='<br><br>⚠️ اتجاهل '+skipped.length+' صف:<br>'+skipped.join('<br>');
+    document.getElementById('importSummaryBody').innerHTML=summary;
+    document.getElementById('importSummaryModal').style.display='flex';
+    if(importTarget==='review') selectReviewCode(currentReviewCode);
+    else if(importTarget==='public') loadPublicVideosAdmin();
+    else loadVideos();
+  }).catch(function(e){
+    document.getElementById('importSummaryBody').innerHTML='<span style="color:var(--danger)">❌ فشل الحفظ: '+e.message+'</span>';
+    document.getElementById('importSummaryModal').style.display='flex';
+  });
 }
 function shortUrl(url){return(url||'').replace('https://drive.google.com/file/d/','').substring(0,28);}
 
@@ -987,6 +1194,11 @@ async function runDiag(){
     }
   }catch(e){lines.push('❌ خطأ قراءة reviewIndex/reviews: '+e.message);}
   try{
+    var acIdxSnap=await db.ref('accessCodeIndex/'+code).once('value');
+    var acRcId=acIdxSnap.val();
+    lines.push((acRcId?'✅':'❌')+' accessCodeIndex/'+code+' → '+(acRcId||'مش موجود'));
+  }catch(e){lines.push('❌ خطأ قراءة accessCodeIndex: '+e.message);}
+  try{
     var stSnap=await db.ref('students/'+code).once('value');
     var st=stSnap.val();
     lines.push(st?'ℹ️ students/'+code+' موجود كمان (كود ده مسجل كـ طالب كذلك): '+JSON.stringify(st):'ℹ️ مش موجود في students (طبيعي لو ده Review Code بحت)');
@@ -1017,6 +1229,23 @@ function loadReviewCodes(){
       });
       if(skipped.length) console.warn('Review codes فيها رموز ممنوعة (. # $ / [ ]) اتجاهلت من الإصلاح التلقائي، لازم تتغير يدويًا:', skipped);
       if(Object.keys(fixes).length) db.ref().update(fixes).catch(function(e){ console.warn('فشل الإصلاح التلقائي:', e.message); });
+    });
+    // نفس الإصلاح لكن لأكواد الوصول (accessCodes) اللي اتحفظت قبل ما نبني accessCodeIndex
+    db.ref('accessCodeIndex').once('value',function(acIdxSnap){
+      var acIdx=acIdxSnap.val()||{};
+      var acFixes={};
+      var acSkipped=[];
+      entries.forEach(function(entry){
+        var rcId=entry[0],rc=entry[1];
+        var codes=Object.values(rc.accessCodes||{});
+        codes.forEach(function(c){
+          if(!c) return;
+          if(/[.#$\/\[\]]/.test(c)){ acSkipped.push(c); return; }
+          if(acIdx[c]!==rcId) acFixes['accessCodeIndex/'+c]=rcId;
+        });
+      });
+      if(acSkipped.length) console.warn('أكواد وصول فيها رموز ممنوعة اتجاهلت:', acSkipped);
+      if(Object.keys(acFixes).length) db.ref().update(acFixes).catch(function(e){ console.warn('فشل إصلاح accessCodeIndex:', e.message); });
     });
     if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa">لا يوجد Review Codes بعد</td></tr>';return;}
     tbody.innerHTML='';
@@ -1617,19 +1846,21 @@ function saveAccessCodes(){
     if(code) entries.push({code:code,name:name});
   });
   if(!entries.length){document.getElementById('acError').textContent='⚠️ حط كود واحد على الأقل!';return;}
+  var badCode=entries.find(function(e){return /[.#$\/\[\]]/.test(e.code);});
+  if(badCode){document.getElementById('acError').textContent='⚠️ الكود "'+badCode.code+'" فيه رمز ممنوع (. # $ / [ ])!';return;}
 
-  var obj={};entries.forEach(function(e,i){obj['c'+i]=e.code;});
-  db.ref('reviews/'+currentReviewCode+'/accessCodes').set(obj).then(function(){
-    // حفظ/تحديث أسماء الطلاب اللي كتبت أسامهم
-    var nameUpdates={};
-    entries.forEach(function(e){ if(e.name) nameUpdates['students/'+e.code+'/name']=e.name; });
-    if(Object.keys(nameUpdates).length){
-      db.ref().update(nameUpdates).then(function(){
-        closeAccessCodesModal();showToast('✅ تم حفظ '+entries.length+' كود!');
-      }).catch(function(e){document.getElementById('acError').textContent='❌ '+e.message;});
-    } else {
-      closeAccessCodesModal();showToast('✅ تم حفظ '+entries.length+' كود!');
-    }
+  // اقرأ الأكواد القديمة الأول عشان نمسح الـ index بتاعها قبل ما نكتب الجديد
+  db.ref('reviews/'+currentReviewCode+'/accessCodes').once('value').then(function(oldSnap){
+    var oldCodes=Object.values(oldSnap.val()||{});
+    var updates={};
+    oldCodes.forEach(function(c){ if(c && !/[.#$\/\[\]]/.test(c)) updates['accessCodeIndex/'+c]=null; });
+    var obj={};entries.forEach(function(e,i){obj['c'+i]=e.code;});
+    updates['reviews/'+currentReviewCode+'/accessCodes']=obj;
+    entries.forEach(function(e){ updates['accessCodeIndex/'+e.code]=currentReviewCode; });
+    entries.forEach(function(e){ if(e.name) updates['students/'+e.code+'/name']=e.name; });
+    return db.ref().update(updates);
+  }).then(function(){
+    closeAccessCodesModal();showToast('✅ تم حفظ '+entries.length+' كود!');
   }).catch(function(e){document.getElementById('acError').textContent='❌ '+e.message;});
 }
 function openAddReviewVideo(){
