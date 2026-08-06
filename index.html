@@ -495,7 +495,7 @@ tbody tr:last-child td{border-bottom:none;}
     <h2 style="color:var(--danger)">🗑️ حذف الفصل</h2>
     <p style="color:#555;margin-bottom:1rem">هتحذف الفصل:</p>
     <div style="background:#fff0f0;border:1.5px solid #ffcccc;border-radius:10px;padding:.9rem 1.2rem;margin-bottom:1rem;font-weight:700;color:var(--danger)" id="deleteChNamePreview"></div>
-    <p style="color:#c0392b;font-size:.88rem;background:#fff8f8;border-radius:8px;padding:.7rem 1rem;border:1px solid #fdd">⚠️ <strong>تحذير:</strong> الفصل هيتحذف من القائمة بس — الفيديوهات المرتبطة هتفضل في Firebase.</p>
+    <p style="color:#c0392b;font-size:.88rem;background:#fff8f8;border-radius:8px;padding:.7rem 1rem;border:1px solid #fdd">⚠️ <strong>تحذير:</strong> الفصل ده هيتشال نهائي من الموقع ومن الـ Database — وكل الفيديوهات اللي جواه هتتمسح تمامًا من Firebase ومش هترجع تاني. مفيش استرجاع بعد الحذف.</p>
     <div id="deleteChError" class="form-error"></div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeDeleteChapterModal()">إلغاء</button>
@@ -1029,12 +1029,18 @@ function confirmDeleteChapter(){
   var code = document.getElementById("codeSelect").value;
   var sel = document.getElementById("chapterSelect");
   var idx = parseInt(sel.value);
-  db.ref("chapterNames/" + code + "/" + idx).remove().then(function(){
+  // تحديث واحد يمسح: اسم الفصل المخصص + كل الفيديوهات المرتبطة به + يعلّمه كـ"محذوف" عشان ميرجعش يظهر
+  // حتى لو كان فصل افتراضي متبني في كود الموقع (script.js)
+  var updates = {};
+  updates["chapterNames/" + code + "/" + idx] = null;
+  updates["videos/" + code + "/ch" + idx] = null;
+  updates["deletedChapters/" + code + "/" + idx] = true;
+  db.ref().update(updates).then(function(){
     sel.remove(sel.selectedIndex);
     if(CHAPTERS[code]){ CHAPTERS[code].splice(idx-1, 1); }
     closeDeleteChapterModal();
     if(currentChapter == idx){ document.getElementById("tableCard").style.display="none"; currentChapter=null; allVideos={}; }
-    showToast("تم حذف الفصل!","warn");
+    showToast("تم حذف الفصل نهائيًا من الموقع والداتا بيز!","warn");
   }).catch(function(e){ document.getElementById("deleteChError").textContent = e.message; });
 }
 
@@ -1045,9 +1051,14 @@ function onCodeChange() {
   sel.innerHTML = '<option value="">⏳ جاري التحميل...</option>';
   if (!code) { sel.innerHTML = '<option value="">-- اختر الـ CODE أولاً --</option>'; return; }
 
-  // جيب الأسماء المخصصة من Firebase
-  db.ref('chapterNames/' + code).once('value', function(snap) {
+  // جيب الأسماء المخصصة + الفصول المحذوفة من Firebase
+  Promise.all([
+    db.ref('chapterNames/' + code).once('value'),
+    db.ref('deletedChapters/' + code).once('value')
+  ]).then(function(results){
+    var snap = results[0];
     var customNames = snap.val() || {};
+    var deletedIdxs = new Set(Object.keys(results[1].val() || {}).map(function(k){ return parseInt(k); }));
     sel.innerHTML = '';
 
     // الفصول الافتراضية
@@ -1055,6 +1066,8 @@ function onCodeChange() {
     // الفصول المضافة من Firebase (رقم أعلى من الافتراضية)
     var allIdxs = new Set(defaults.map(function(_, i){ return i+1; }));
     Object.keys(customNames).forEach(function(k){ allIdxs.add(parseInt(k)); });
+    // شيل أي فصل اتحذف نهائيًا
+    deletedIdxs.forEach(function(idx){ allIdxs.delete(idx); });
 
     // رتّب
     var sorted = Array.from(allIdxs).sort(function(a,b){ return a-b; });
