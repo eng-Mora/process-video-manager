@@ -1,0 +1,2027 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎬 إدارة الفيديوهات - The Process</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--primary:#800000;--primary-light:#a00000;--gold:#D4AF37;--bg:#f0f2f5;--card:#fff;--border:#e0e0e0;--text:#333;--muted:#777;--danger:#dc3545;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);direction:rtl;min-height:100vh;}
+
+/* AUTH */
+#authScreen{position:fixed;inset:0;background:linear-gradient(135deg,#0B0C2A,#1a1a4e 50%,#800000);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.auth-card{background:#fff;border-radius:20px;padding:3rem 2.5rem;width:380px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+.auth-card h1{color:var(--primary);margin-bottom:.5rem;}
+.auth-card p{color:var(--muted);margin-bottom:1.8rem;font-size:.95rem;}
+.auth-field{position:relative;margin-bottom:1rem;text-align:right;}
+.auth-field label{display:block;font-size:.82rem;font-weight:700;color:#555;margin-bottom:.35rem;}
+.auth-field .field-icon{position:absolute;left:1rem;top:50%;transform:translateY(-50%) translateY(11px);color:#aaa;font-size:.95rem;}
+.auth-input{width:100%;padding:.85rem 1rem .85rem 2.6rem;border:2px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:.97rem;direction:ltr;text-align:left;transition:border-color .2s;}
+.auth-input:focus{outline:none;border-color:var(--primary);}
+.auth-btn{width:100%;padding:.9rem;background:var(--primary);color:#fff;border:none;border-radius:10px;font-family:Tajawal,sans-serif;font-size:1.05rem;font-weight:700;cursor:pointer;transition:background .2s;margin-top:.4rem;}
+.auth-btn:hover:not(:disabled){background:var(--primary-light);}
+.auth-btn:disabled{opacity:.6;cursor:not-allowed;}
+#authError{color:var(--danger);margin-top:.8rem;font-size:.88rem;min-height:1.2rem;line-height:1.5;}
+#app{display:none;}
+
+/* HEADER */
+header{background:linear-gradient(135deg,#800000,#2c3e50);color:#fff;padding:1.2rem 2rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.2);}
+.header-title{font-size:1.4rem;font-weight:800;}
+.header-title span{color:var(--gold);}
+.back-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:.5rem 1.2rem;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.9rem;}
+.back-btn:hover{background:rgba(255,255,255,.25);}
+.container{max-width:960px;margin:0 auto;padding:2rem 1rem;}
+.tab-nav{display:flex;gap:.5rem;margin-bottom:1.5rem;background:#fff;border-radius:14px;padding:.5rem;box-shadow:0 2px 10px rgba(0,0,0,.06);}
+.tab-btn{flex:1;padding:.75rem 1rem;border:none;border-radius:10px;font-family:Tajawal,sans-serif;font-size:1rem;font-weight:700;cursor:pointer;color:#777;background:transparent;transition:all .2s;}
+.tab-btn.active{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(128,0,0,.25);}
+.tab-btn:not(.active):hover{background:#f5f5f5;color:#333;}
+.selector-card{background:var(--card);border-radius:16px;padding:1.5rem 2rem;box-shadow:0 4px 20px rgba(0,0,0,.07);margin-bottom:2rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;}
+.sel-group{display:flex;flex-direction:column;gap:.4rem;flex:1;min-width:180px;}
+.sel-group label{font-size:.85rem;font-weight:700;color:var(--muted);}
+.sel-group select{padding:.7rem 1rem;border:2px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:.95rem;color:var(--text);background:#fff;cursor:pointer;}
+.sel-group select:focus{outline:none;border-color:var(--primary);}
+.btn-load{padding:.75rem 2rem;background:var(--primary);color:#fff;border:none;border-radius:10px;font-family:Tajawal,sans-serif;font-size:1rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+.btn-load:hover{background:var(--primary-light);}
+.table-card{background:var(--card);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.07);overflow:hidden;margin-bottom:1.5rem;}
+.table-header{padding:1.2rem 1.5rem;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--border);}
+.table-header h2{font-size:1.1rem;color:var(--primary);}
+.btn-add{padding:.6rem 1.5rem;background:var(--primary);color:#fff;border:none;border-radius:10px;font-family:Tajawal,sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;}
+.btn-add:hover{background:var(--primary-light);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:#f8f9fa;}
+th,td{padding:.8rem 1rem;text-align:right;border-bottom:1px solid var(--border);font-size:.9rem;}
+th{font-weight:700;color:var(--muted);font-size:.82rem;}
+tbody tr:hover{background:#fafafa;}
+tbody tr:last-child td{border-bottom:none;}
+.order-badge{background:#e8f5e9;color:#2e7d32;padding:2px 10px;border-radius:10px;font-size:.8rem;font-weight:700;}
+.parts-badge{background:#e8f4fd;color:#007bff;padding:2px 10px;border-radius:10px;font-size:.8rem;font-weight:700;}
+.url-preview{font-size:.78rem;color:var(--muted);direction:ltr;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
+.btn-edit{background:#e8f4fd;color:#007bff;border:none;padding:.35rem .65rem;border-radius:7px;cursor:pointer;margin:0 2px;}
+.btn-edit:hover{background:#007bff;color:#fff;}
+.btn-key{background:#fff8e1;color:#e6a817;border:none;padding:.35rem .65rem;border-radius:7px;cursor:pointer;margin:0 2px;}
+.btn-key:hover{background:#e6a817;color:#fff;}
+.btn-delete{background:#fde8e8;color:var(--danger);border:none;padding:.35rem .65rem;border-radius:7px;cursor:pointer;margin:0 2px;}
+.btn-delete:hover{background:var(--danger);color:#fff;}
+.btn-up,.btn-down{background:#f5f5f5;color:#555;border:none;padding:.35rem .55rem;border-radius:7px;cursor:pointer;margin:0 1px;font-size:.8rem;}
+.btn-up:hover,.btn-down:hover{background:#ddd;}
+.hint{background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.5rem;font-size:.88rem;color:#795548;line-height:1.7;}
+.hint strong{color:var(--primary);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:1rem;}
+.modal{background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;}
+.modal h2{color:var(--primary);margin-bottom:1.5rem;font-size:1.25rem;}
+.form-group{margin-bottom:1rem;}
+.form-group label{display:block;font-weight:700;margin-bottom:.4rem;font-size:.88rem;color:#555;}
+.form-group input,.form-group textarea{width:100%;padding:.7rem 1rem;border:2px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:.95rem;color:var(--text);}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:var(--primary);}
+
+/* MULTI-PARTS */
+.parts-container{margin-bottom:1rem;}
+.part-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;background:#f8f9fa;border-radius:10px;padding:.6rem .8rem;flex-wrap:wrap;}
+.part-row .part-label{font-size:.82rem;font-weight:700;color:var(--muted);white-space:nowrap;min-width:60px;}
+.part-row .part-title-input{width:130px;padding:.5rem .7rem;border:2px solid var(--border);border-radius:8px;font-family:Tajawal,sans-serif;font-size:.82rem;direction:rtl;color:var(--text);background:#fff;}
+.part-row .part-title-input:focus{outline:none;border-color:var(--primary);}
+.part-row .part-title-input::placeholder{color:#bbb;}
+.part-row input.part-url-input{flex:1;min-width:120px;padding:.6rem .9rem;border:2px solid var(--border);border-radius:8px;font-family:Tajawal,sans-serif;font-size:.9rem;direction:ltr;}
+.part-row input:focus{outline:none;border-color:var(--primary);}
+.btn-remove-part{background:#fde8e8;color:var(--danger);border:none;padding:.35rem .6rem;border-radius:7px;cursor:pointer;font-size:.85rem;flex-shrink:0;}
+.btn-remove-part:hover{background:var(--danger);color:#fff;}
+.btn-add-part{display:flex;align-items:center;gap:.4rem;background:none;border:1.5px dashed var(--primary);color:var(--primary);padding:.45rem 1.2rem;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.9rem;font-weight:700;margin-bottom:.5rem;transition:background .15s;}
+.btn-add-part:hover{background:#fff0f0;}
+.drag-handle{cursor:grab;color:#bbb;padding:0 .3rem;font-size:1rem;flex-shrink:0;user-select:none;touch-action:none;}
+.drag-handle:hover{color:#888;}
+.drag-handle:active{cursor:grabbing;}
+.part-row.dragging{opacity:.4;border:2px dashed var(--primary);}
+.part-row.drag-over{border:2px solid var(--primary);background:#fff0f0;transform:scale(1.01);transition:transform .1s;}
+.parts-hint{font-size:.75rem;color:#bbb;margin-bottom:.4rem;text-align:center;}
+
+/* ACCESS CODE ROWS */
+.ac-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;background:#f8f9fa;border-radius:10px;padding:.6rem .8rem;flex-wrap:wrap;}
+.ac-row input.ac-code-input{width:120px;flex-shrink:0;padding:.6rem .8rem;border:2px solid var(--border);border-radius:8px;font-family:monospace;font-size:.9rem;direction:ltr;}
+.ac-row input.ac-name-input{flex:1;min-width:120px;padding:.6rem .9rem;border:2px solid var(--border);border-radius:8px;font-family:Tajawal,sans-serif;font-size:.9rem;direction:rtl;}
+.ac-row input:focus{outline:none;border-color:#6f42c1;}
+.ac-row input.ac-code-input::placeholder,.ac-row input.ac-name-input::placeholder{color:#bbb;}
+.btn-remove-ac{background:#fde8e8;color:var(--danger);border:none;padding:.35rem .6rem;border-radius:7px;cursor:pointer;font-size:.85rem;flex-shrink:0;}
+.btn-remove-ac:hover{background:var(--danger);color:#fff;}
+
+
+.modal-footer{display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;}
+.btn-save{padding:.7rem 2rem;background:var(--primary);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:1rem;font-weight:700;}
+.btn-save:hover{background:var(--primary-light);}
+.btn-cancel{padding:.7rem 1.5rem;background:#f0f0f0;color:var(--text);border:none;border-radius:10px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:1rem;}
+.btn-cancel:hover{background:#ddd;}
+.form-error{color:var(--danger);font-size:.85rem;margin-top:.5rem;min-height:1.2rem;}
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(100px);background:#2c3e50;color:#fff;padding:.8rem 2rem;border-radius:30px;font-size:1rem;font-weight:600;z-index:9999;opacity:0;transition:all .3s;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.warn{background:var(--danger);}
+@media(max-width:600px){.selector-card{flex-direction:column;}header{padding:1rem;}th:nth-child(3),td:nth-child(3){display:none;}}
+</style>
+</head>
+<body>
+<input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none">
+<div class="modal-overlay" id="importSummaryModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:480px">
+    <h2>📥 نتيجة الاستيراد</h2>
+    <div id="importSummaryBody" style="font-family:Tajawal,sans-serif;line-height:1.9;max-height:50vh;overflow-y:auto"></div>
+    <div style="margin-top:1.2rem;text-align:left">
+      <button class="btn-add" onclick="document.getElementById('importSummaryModal').style.display='none'">تمام</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div style="font-size:3rem;margin-bottom:.5rem">🎬</div>
+    <h1>إدارة الفيديوهات</h1>
+    <p>The Process — Video Manager</p>
+
+    <div class="auth-field">
+      <label>البريد الإلكتروني</label>
+      <i class="fas fa-envelope field-icon"></i>
+      <input type="email" id="adminEmail" class="auth-input" placeholder="admin@example.com"
+             onkeydown="if(event.key==='Enter')document.getElementById('adminPass').focus()">
+    </div>
+
+    <div class="auth-field">
+      <label>كلمة المرور</label>
+      <i class="fas fa-lock field-icon"></i>
+      <input type="password" id="adminPass" class="auth-input" placeholder="••••••••"
+             onkeydown="if(event.key==='Enter')submitAuth()">
+    </div>
+
+    <button class="auth-btn" id="authBtnEl" onclick="submitAuth()">
+      <i class="fas fa-sign-in-alt"></i> دخول
+    </button>
+    <div id="authError"></div>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="header-title">🎬 إدارة <span>الفيديوهات</span></div>
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <span id="loggedInEmail" style="font-size:.82rem;color:rgba(255,255,255,.65);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <button class="back-btn" onclick="exportAllToExcel()" style="background:rgba(13,110,253,.25);border-color:rgba(13,110,253,.5)">
+        <i class="fas fa-download"></i> تحميل كل الفيديوهات
+      </button>
+      <a href="admin.html" style="text-decoration:none">
+        <button class="back-btn"><i class="fas fa-arrow-right"></i> لوحة التحكم</button>
+      </a>
+      <button class="back-btn" onclick="signOut()" style="background:rgba(220,53,69,.25);border-color:rgba(220,53,69,.5)">
+        <i class="fas fa-sign-out-alt"></i> خروج
+      </button>
+    </div>
+  </header>
+  <div class="container">
+
+    <div class="tab-nav">
+      <button class="tab-btn active" id="tabHomework" onclick="switchTab('homework')">📚 فيديوهات الواجب</button>
+      <button class="tab-btn" id="tabReview" onclick="switchTab('review')">🎯 فيديوهات المراجعة</button>
+      <button class="tab-btn" id="tabPublic" onclick="switchTab('public')">🌐 فيديوهات عامة</button>
+    </div>
+
+    <!-- HOMEWORK -->
+    <div id="panelHomework">
+      <div class="hint"><strong>خطوات إضافة فيديو:</strong><br>
+        ١ — اختر الـ CODE ← ٢ — اختر الفصل ← ٣ — تحميل ← ٤ — فيديو جديد<br>
+        رابط Drive بأي شكل — هيتحول تلقائياً ✅ | ممكن تضيف أكتر من جزئين 🎬</div>
+      <div class="selector-card">
+        <div class="sel-group">
+          <label><i class="fas fa-layer-group"></i> الـ CODE</label>
+          <select id="codeSelect" onchange="onCodeChange()">
+            <option value="">-- اختر --</option>
+            <option value="CODE1">CODE1 — ثالثة ثانوي عربي</option>
+            <option value="CODE2">CODE2 — ثالثة ثانوي لغات</option>
+            <option value="CODE3">CODE3 — مراجعة الفصل الأول عربي</option>
+            <option value="CODE4">CODE4 — مراجعة الفصل الأول لغات</option>
+            <option value="CODE5">CODE5 — تانية ثانوي لغات</option>
+            <option value="CODE6">CODE6 — مراجعة الفصل الثاني عربي</option>
+            <option value="CODE7">CODE7 — Chapter 2 لغات</option>
+            <option value="CODE8">CODE8 — الفصل الثالث عربي</option>
+            <option value="CODE9">CODE9 — Chapter 3 لغات</option>
+            <option value="CODE10">CODE10 — Final Revision لغات</option>
+            <option value="CODE11">CODE11 — مراجعة نصف السنة عربي</option>
+            <option value="CODE12">CODE12 — Mid-Year Review لغات</option>
+            <option value="CODE13">CODE13 — تانية ثانوي لغات</option>
+          </select>
+        </div>
+        <div class="sel-group">
+          <label><i class="fas fa-book-open"></i> الفصل</label>
+          <select id="chapterSelect"><option value="">-- اختر الـ CODE أولاً --</option></select>
+        </div>
+        <button class="btn-load" onclick="loadVideos()"><i class="fas fa-search"></i> تحميل</button>
+        <button class="btn-load" style="background:#2e7d32;white-space:nowrap" onclick="openAddChapterModal()"><i class="fas fa-plus"></i> فصل جديد</button>
+        <button class="btn-load" style="background:#007bff;white-space:nowrap" onclick="openEditChapterModal()"><i class="fas fa-edit"></i> تعديل فصل</button>
+        <button class="btn-load" style="background:var(--danger);white-space:nowrap" onclick="openDeleteChapterConfirm()"><i class="fas fa-trash"></i> حذف فصل</button>
+      </div>
+      <div class="table-card" id="tableCard" style="display:none">
+        <div class="table-header">
+          <h2 id="tableTitle">الفيديوهات</h2>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn-add" style="background:#0d6efd" onclick="exportToExcel('homework')"><i class="fas fa-download"></i> تحميل Excel</button>
+            <button class="btn-add" style="background:#1d7a46" onclick="triggerImport('homework')"><i class="fas fa-file-excel"></i> استيراد من Excel</button>
+            <button class="btn-add" onclick="openAddModal()"><i class="fas fa-plus"></i> فيديو جديد</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>الترتيب</th><th>العنوان</th><th>الرابط</th><th>الأجزاء</th><th>أكواد</th><th>إجراءات</th></tr></thead>
+          <tbody id="videoBody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEW -->
+    <div id="panelReview" style="display:none">
+      <div class="hint" style="border-color:#6f42c1;background:#f8f0ff;">
+        <strong style="color:#6f42c1">🎯 فيديوهات المراجعة:</strong><br>
+        كل Review Code له فيديوهاته + أكواد الطلاب المسموح ليهم يشوفوه.<br>
+        الطالب بيدخل بالكود مباشرة ويشوف فيديوهات المراجعة. ممكن تضيف أكتر من جزئين 🎬
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <h2>🗂️ Review Codes</h2>
+          <button class="btn-add" style="background:#6f42c1" onclick="openAddReviewCode()"><i class="fas fa-plus"></i> Review Code جديد</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>الكود</th><th>الوصف</th><th>فيديوهات</th><th>أكواد وصول</th><th>إجراءات</th></tr></thead>
+          <tbody id="reviewCodesBody"><tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa">اضغط تاب المراجعة للتحميل</td></tr></tbody></table>
+        </div>
+      </div>
+
+      <div class="table-card" style="border:2px dashed #6f42c1">
+        <div class="table-header"><h2>🔎 تشخيص كود</h2></div>
+        <div style="padding:0 1rem 1rem">
+          <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+            <input type="text" id="diagCode" placeholder="اكتب الكود هنا" dir="ltr" style="flex:1;padding:.6rem;font-family:monospace;border-radius:8px;border:2px solid var(--border)">
+            <button class="btn-add" style="background:#6f42c1" onclick="runDiag()">افحص</button>
+          </div>
+          <div id="diagResult" style="font-family:monospace;font-size:.82rem;white-space:pre-wrap;word-break:break-all"></div>
+        </div>
+      </div>
+
+      <div id="reviewVideosSection" style="display:none">
+        <div class="table-card">
+          <div class="table-header">
+            <h2 id="reviewVideosTitle">فيديوهات</h2>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn-add" style="background:#555;font-size:.85rem" onclick="openManageAccessCodes()"><i class="fas fa-key"></i> أكواد الوصول</button>
+              <button class="btn-add" style="background:#e67e22;font-size:.85rem" onclick="openTasksModal()"><i class="fas fa-tasks"></i> المهام</button>
+              <button class="btn-add" style="background:#27ae60;font-size:.85rem" onclick="openProgressModal()"><i class="fas fa-chart-bar"></i> متابعة الطلاب</button>
+              <button class="btn-add" style="background:#0d6efd;font-size:.85rem" onclick="exportToExcel('review')"><i class="fas fa-download"></i> تحميل Excel</button>
+              <button class="btn-add" style="background:#1d7a46;font-size:.85rem" onclick="triggerImport('review')"><i class="fas fa-file-excel"></i> استيراد من Excel</button>
+              <button class="btn-add" style="background:#6f42c1" onclick="openAddReviewVideo()"><i class="fas fa-plus"></i> فيديو جديد</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table><thead><tr><th>الترتيب</th><th>العنوان</th><th>الرابط</th><th>الأجزاء</th><th>إجراءات</th></tr></thead>
+            <tbody id="reviewVideoBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PUBLIC (بدون تسجيل دخول) -->
+    <div id="panelPublic" style="display:none">
+      <div class="hint" style="border-color:#17a2b8;background:#eafaff;">
+        <strong style="color:#17a2b8">🌐 فيديوهات عامة:</strong><br>
+        الفيديوهات دي بتظهر لأي حد يفتح الموقع من غير ما يسجّل دخول — عن طريق زرار "فيديوهات" في القائمة الجانبية.<br>
+        ممكن تضيف أكتر من جزئين 🎬
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <h2>🌐 الفيديوهات العامة</h2>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn-add" style="background:#0d6efd" onclick="exportToExcel('public')"><i class="fas fa-download"></i> تحميل Excel</button>
+            <button class="btn-add" style="background:#1d7a46" onclick="triggerImport('public')"><i class="fas fa-file-excel"></i> استيراد من Excel</button>
+            <button class="btn-add" style="background:#17a2b8" onclick="openAddPublicVideo()"><i class="fas fa-plus"></i> فيديو جديد</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>الترتيب</th><th>العنوان</th><th>الرابط</th><th>الأجزاء</th><th>إجراءات</th></tr></thead>
+          <tbody id="publicVideoBody"><tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Rename Student Modal -->
+<div class="modal-overlay" id="renameStudentModal" style="display:none;z-index:1100" onclick="if(event.target===this)closeRenameStudentModal()">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:#2980b9">✏️ تغيير اسم الطالب</h2>
+    <p style="color:#888;font-size:.85rem;margin-bottom:1rem">الاسم ده هيظهر في متابعة الطلاب بدل الكود</p>
+    <div class="form-group">
+      <label>🔑 الكود</label>
+      <input type="text" id="renameStudentCode" readonly style="background:#f5f5f5;color:#999;cursor:not-allowed">
+    </div>
+    <div class="form-group">
+      <label>👤 الاسم *</label>
+      <input type="text" id="renameStudentName" placeholder="اسم الطالب..." onkeydown="if(event.key==='Enter')saveStudentName()">
+    </div>
+    <div id="renameStudentError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeRenameStudentModal()">إلغاء</button>
+      <button class="btn-save" style="background:#2980b9" onclick="saveStudentName()">💾 حفظ الاسم</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task Details Modal -->
+<div class="modal-overlay" id="taskDetailsModal" style="display:none;z-index:1100" onclick="if(event.target===this)document.getElementById('taskDetailsModal').style.display='none'">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:#e67e22">📋 تفاصيل المهام</h2>
+    <p id="taskDetailsStudentName" style="color:#555;font-size:.9rem;margin-bottom:1rem;font-weight:700"></p>
+    <div id="taskDetailsList" style="display:flex;flex-direction:column;gap:.5rem"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('taskDetailsModal').style.display='none'">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- Watch Details Modal -->
+<div class="modal-overlay" id="watchDetailsModal" style="display:none;z-index:1100" onclick="if(event.target===this)document.getElementById('watchDetailsModal').style.display='none'">
+  <div class="modal" style="max-width:460px">
+    <h2 style="color:#27ae60">👁️ تفاصيل المشاهدة</h2>
+    <p id="watchDetailsStudentName" style="color:#555;font-size:.9rem;margin-bottom:1rem;font-weight:700"></p>
+    <div id="watchDetailsList" style="display:flex;flex-direction:column;gap:.8rem;max-height:50vh;overflow-y:auto"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('watchDetailsModal').style.display='none'">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tasks Modal (Day-Based) -->
+<div class="modal-overlay" id="tasksModal" style="display:none" onclick="if(event.target===this)closeTasksModal()">
+  <div class="modal" style="max-width:640px">
+    <h2 style="color:#e67e22">📋 إدارة المهام — بالأيام</h2>
+    <p style="color:#888;font-size:.82rem;margin-bottom:1rem">كل يوم ليه اسم وعنوان اختياري + قائمة مهامه — الطالب يقدر يتنقل بين الأيام ويخلص مهام كل يوم لوحده</p>
+
+    <!-- Days Tabs -->
+    <div id="daysTabs" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem;border-bottom:2px solid #eee;padding-bottom:.6rem"></div>
+
+    <!-- Day Editor -->
+    <div id="dayEditor" style="background:#fafafa;border-radius:12px;padding:1rem;margin-bottom:.8rem;min-height:80px">
+      <p style="color:#bbb;text-align:center;font-size:.9rem">اضغط يوم أو أضف يوم جديد</p>
+    </div>
+
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem">
+      <button onclick="addDay()" style="background:#e67e22;color:#fff;border:none;padding:.5rem 1.1rem;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;font-weight:700;font-size:.9rem"><i class="fas fa-plus"></i> يوم جديد</button>
+      <button onclick="deleteCurDay()" id="btnDelDay" style="background:#e74c3c;color:#fff;border:none;padding:.5rem 1.1rem;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;font-weight:700;font-size:.9rem;display:none"><i class="fas fa-trash"></i> حذف اليوم</button>
+    </div>
+
+    <div id="tasksError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeTasksModal()">إلغاء</button>
+      <button class="btn-save" style="background:#e67e22" onclick="saveTasks()">💾 حفظ كل المهام</button>
+    </div>
+  </div>
+</div>
+
+<!-- Progress Modal -->
+<div class="modal-overlay" id="progressModal" style="display:none" onclick="if(event.target===this)closeProgressModal()">
+  <div class="modal" style="max-width:700px">
+    <h2 style="color:#27ae60">📊 متابعة الطلاب</h2>
+    <div id="progressBody" style="margin-top:1rem">
+      <div style="text-align:center;padding:2rem;color:#888"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeProgressModal()">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VIDEO MODAL (Multi-Part) ============ -->
+<div class="modal-overlay" id="videoModal" style="display:none" onclick="if(event.target===this)closeVideoModal()">
+  <div class="modal">
+    <h2 id="modalTitle">➕ فيديو جديد</h2>
+    <div class="form-group">
+      <label>📝 عنوان الفيديو *</label>
+      <input type="text" id="vTitle" placeholder="حل واجب حصة 24">
+    </div>
+    <div class="form-group">
+      <label>🔢 رقم الترتيب *</label>
+      <input type="number" id="vOrder" min="1" placeholder="1" style="width:130px">
+    </div>
+
+    <div style="font-size:.88rem;font-weight:700;color:#555;margin-bottom:.3rem;">🔗 روابط Drive (الأجزاء)</div>
+    <div class="parts-hint">☰ اسحب الأجزاء لتغيير ترتيبها</div>
+    <div class="parts-container" id="partsContainer"></div>
+    <button class="btn-add-part" onclick="addPartRow()"><i class="fas fa-plus"></i> إضافة جزء</button>
+
+    <div id="formError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeVideoModal()">إلغاء</button>
+      <button class="btn-save" onclick="saveVideo()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Review Code Modal -->
+<div class="modal-overlay" id="reviewCodeModal" style="display:none" onclick="if(event.target===this)closeReviewCodeModal()">
+  <div class="modal">
+    <h2 style="color:#6f42c1">➕ Review Code جديد</h2>
+    <div class="form-group"><label>🔑 الكود * (مثال: REV1)</label><input type="text" id="rcCode" placeholder="REV1" dir="ltr" style="font-family:monospace"></div>
+    <div class="form-group"><label>📝 وصف (اختياري)</label><input type="text" id="rcDesc" placeholder="مراجعة الفصل الأول"></div>
+    <div id="rcError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeReviewCodeModal()">إلغاء</button>
+      <button class="btn-save" style="background:#6f42c1" onclick="saveReviewCode()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Access Codes Modal (Review) -->
+<div class="modal-overlay" id="accessCodesModal" style="display:none" onclick="if(event.target===this)closeAccessCodesModal()">
+  <div class="modal">
+    <h2 style="color:#6f42c1">🔑 أكواد الوصول</h2>
+    <p style="color:#777;font-size:.88rem;margin-bottom:1rem">حط كود الطالب واسمه جنب بعض — يسهّل عليك معرفة كل كود لمين.</p>
+    <div class="form-group">
+      <label>📋 الأكواد والأسماء</label>
+      <div id="acCodesContainer" class="parts-container"></div>
+      <button type="button" class="btn-add-part" onclick="addAcCodeRow('','')"><i class="fas fa-plus"></i> كود جديد</button>
+    </div>
+    <div id="acError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeAccessCodesModal()">إلغاء</button>
+      <button class="btn-save" style="background:#6f42c1" onclick="saveAccessCodes()">💾 حفظ الأكواد</button>
+    </div>
+  </div>
+</div>
+
+<!-- Homework Video Access Codes Modal -->
+<div class="modal-overlay" id="hwAccessCodesModal" style="display:none" onclick="if(event.target===this)closeHwAccessCodesModal()">
+  <div class="modal">
+    <h2 style="color:#e6a817">🔑 أكواد وصول الفيديو</h2>
+    <p id="hwAcVideoTitle" style="color:#777;font-size:.88rem;margin-bottom:.5rem;font-weight:700"></p>
+    <p style="color:#aaa;font-size:.83rem;margin-bottom:1rem">لو سبت الخانة فاضية → الفيديو يظهر لكل طلاب الـ CODE. لو حطيت أكواد → يظهر بس للطلاب دول.</p>
+    <div class="form-group">
+      <label>📋 أكواد الطلاب</label>
+      <textarea id="hwAccessCodesInput" rows="8" style="font-family:monospace;font-size:.9rem;resize:vertical;direction:ltr" placeholder="12345&#10;67890"></textarea>
+    </div>
+    <div id="hwAcError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeHwAccessCodesModal()">إلغاء</button>
+      <button class="btn-save" style="background:#e6a817" onclick="saveHwAccessCodes()">💾 حفظ الأكواد</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Chapter Modal -->
+<div class="modal-overlay" id="editChapterModal" style="display:none" onclick="if(event.target===this)closeEditChapterModal()">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:#007bff">✏️ تعديل اسم الفصل</h2>
+    <p style="color:#888;font-size:.85rem;margin-bottom:1.2rem">اكتب الاسم الجديد للفصل المختار</p>
+    <div class="form-group"><label>📘 الـ CODE</label><input type="text" id="editChCode" readonly style="background:#f5f5f5;color:#777;cursor:not-allowed"></div>
+    <div class="form-group"><label>✏️ الاسم الجديد *</label><input type="text" id="editChName" placeholder="مثال: الفصل التاسع" onkeydown="if(event.key==='Enter')saveEditChapter()"></div>
+    <div class="form-group">
+      <label>🔀 الفرع</label>
+      <select id="editChBranch">
+        <option value="">بدون فرع (فصل عادي)</option>
+        <option value="electric">⚡ الفيزياء الكهربية</option>
+        <option value="modern">🧬 الفيزياء الحديثة</option>
+      </select>
+    </div>
+    <div id="editChError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeEditChapterModal()">إلغاء</button>
+      <button class="btn-save" style="background:#007bff" onclick="saveEditChapter()">💾 حفظ التعديل</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Chapter Modal -->
+<div class="modal-overlay" id="deleteChapterModal" style="display:none" onclick="if(event.target===this)closeDeleteChapterModal()">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:var(--danger)">🗑️ حذف الفصل</h2>
+    <p style="color:#555;margin-bottom:1rem">هتحذف الفصل:</p>
+    <div style="background:#fff0f0;border:1.5px solid #ffcccc;border-radius:10px;padding:.9rem 1.2rem;margin-bottom:1rem;font-weight:700;color:var(--danger)" id="deleteChNamePreview"></div>
+    <p style="color:#c0392b;font-size:.88rem;background:#fff8f8;border-radius:8px;padding:.7rem 1rem;border:1px solid #fdd">⚠️ <strong>تحذير:</strong> الفصل هيتحذف من القائمة بس — الفيديوهات المرتبطة هتفضل في Firebase.</p>
+    <div id="deleteChError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeDeleteChapterModal()">إلغاء</button>
+      <button class="btn-save" style="background:var(--danger)" onclick="confirmDeleteChapter()">🗑️ حذف</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Chapter Modal -->
+<div class="modal-overlay" id="addChapterModal" style="display:none" onclick="if(event.target===this)closeAddChapterModal()">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:#2e7d32">➕ إضافة فصل / سكشن جديد</h2>
+    <p style="color:#888;font-size:.85rem;margin-bottom:1.2rem">هيتضاف للـ CODE اللي اخترته — اكتب الاسم اللي هيظهر للطلاب</p>
+    <div class="form-group">
+      <label>📘 الـ CODE المختار</label>
+      <input type="text" id="newChCode" readonly style="background:#f5f5f5;color:#777;cursor:not-allowed">
+    </div>
+    <div class="form-group">
+      <label>✏️ اسم الفصل / السكشن *</label>
+      <input type="text" id="newChName" placeholder="مثال: الفصل التاسع — الموجات">
+    </div>
+    <div class="form-group">
+      <label>🔀 الفرع (اختياري)</label>
+      <select id="newChBranch">
+        <option value="">بدون فرع (فصل عادي)</option>
+        <option value="electric">⚡ الفيزياء الكهربية</option>
+        <option value="modern">🧬 الفيزياء الحديثة</option>
+      </select>
+    </div>
+    <div id="addChError" class="form-error"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeAddChapterModal()">إلغاء</button>
+      <button class="btn-save" style="background:#2e7d32" onclick="saveNewChapter()">💾 إضافة</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== FIREBASE =====================
+firebase.initializeApp({
+  apiKey:"AIzaSyBXsX0v_7p8CHDFiTUm4XkQsoZIqGueAOk",
+  authDomain:"the-process-5d196.firebaseapp.com",
+  databaseURL:"https://the-process-5d196-default-rtdb.firebaseio.com",
+  projectId:"the-process-5d196",
+  storageBucket:"the-process-5d196.firebasestorage.app",
+  messagingSenderId:"96415822332",
+  appId:"1:96415822332:web:2be476bee2e474383d8279"
+});
+var db   = firebase.database();
+var auth = firebase.auth();
+
+// ===================== AUTH — Firebase Email / Password =====================
+function setAuthLoading(on){
+  var btn = document.getElementById('authBtnEl');
+  btn.disabled = on;
+  btn.innerHTML = on
+    ? '<i class="fas fa-spinner fa-spin"></i> جارٍ التحقق...'
+    : '<i class="fas fa-sign-in-alt"></i> دخول';
+}
+
+function submitAuth(){
+  var email = document.getElementById('adminEmail').value.trim();
+  var pass  = document.getElementById('adminPass').value;
+  var errEl = document.getElementById('authError');
+  errEl.textContent = '';
+  if(!email){ errEl.textContent='⚠️ ادخل البريد الإلكتروني!'; return; }
+  if(!pass) { errEl.textContent='⚠️ ادخل كلمة المرور!'; return; }
+  setAuthLoading(true);
+  auth.signInWithEmailAndPassword(email, pass)
+    .catch(function(err){
+      setAuthLoading(false);
+      var msg = '❌ ';
+      switch(err.code){
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential': msg += 'البريد أو كلمة المرور غلط!'; break;
+        case 'auth/invalid-email':      msg += 'البريد الإلكتروني غير صحيح!'; break;
+        case 'auth/too-many-requests':  msg += 'محاولات كتير — جرب بعد شوية.'; break;
+        case 'auth/network-request-failed': msg += 'مفيش اتصال بالإنترنت!'; break;
+        default: msg += err.message;
+      }
+      errEl.textContent = msg;
+    });
+}
+
+function signOut(){
+  auth.signOut().then(function(){
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('adminEmail').value = '';
+    document.getElementById('adminPass').value  = '';
+    document.getElementById('authError').textContent = '';
+    setAuthLoading(false);
+  });
+}
+
+// مراقبة حالة الدخول — بيشتغل تلقائياً لما الصفحة تفتح
+auth.onAuthStateChanged(function(user){
+  setAuthLoading(false);
+  if(user){
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('loggedInEmail').textContent = user.email;
+  } else {
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+  }
+});
+
+// ===================== DATA =====================
+var CHAPTERS = {
+  CODE1:[],
+  CODE2:[],
+  CODE3:['مراجعة الفصل الأول'],CODE4:['Chapter 1 Revision'],CODE5:['Homework'],
+  CODE6:['مراجعة الفصل الثاني'],CODE7:['Chapter 2'],CODE8:['الفصل الثالث'],
+  CODE9:['Chapter 3'],CODE10:['Final Revision'],CODE11:['مراجعة نصف السنة'],
+  CODE12:['Mid-Year Review'],CODE13:['Homework']
+};
+
+var currentCode=null,currentChapter=null,allVideos={},editingId=null;
+var currentReviewCode=null,reviewVideos={},editingReviewVid=null;
+var publicVideos={},editingPublicVid=null;
+var saveTarget='homework';
+
+// ===================== HELPERS =====================
+function toEmbed(url){
+  if(!url)return'';
+  url=url.trim();
+  if(url.includes('/preview'))return url;
+  var m=url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if(m)return'https://drive.google.com/file/d/'+m[1]+'/preview';
+  var m2=url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if(m2)return'https://drive.google.com/file/d/'+m2[1]+'/preview';
+  return url;
+}
+function showToast(msg,type){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast show'+(type?' '+type:'');
+  setTimeout(function(){t.classList.remove('show');},3000);
+}
+
+// ===================== EXCEL EXPORT (الكل مرة واحدة) =====================
+async function exportAllToExcel(){
+  showToast('⏳ بجهز الملف، ثواني...');
+  try{
+    var results=await Promise.all([
+      db.ref('videos').once('value'),
+      db.ref('reviews').once('value'),
+      db.ref('publicVideos').once('value')
+    ]);
+    var videosData=results[0].val()||{};
+    var reviewsData=results[1].val()||{};
+    var publicData=results[2].val()||{};
+
+    var hwRows=[];
+    Object.keys(videosData).forEach(function(code){
+      var chapters=videosData[code]||{};
+      Object.keys(chapters).forEach(function(chKey){
+        var vids=chapters[chKey]||{};
+        Object.values(vids).forEach(function(v){
+          hwRows.push({'الكود':code,'الفصل':chKey.replace('ch',''),'الترتيب':v.order||'','العنوان':v.title||'','الرابط':v.url1||''});
+        });
+      });
+    });
+    hwRows.sort(function(a,b){
+      var ka=a['الكود']+'-'+a['الفصل'], kb=b['الكود']+'-'+b['الفصل'];
+      return ka<kb?-1:ka>kb?1:(a['الترتيب']-b['الترتيب']);
+    });
+
+    var rvRows=[];
+    Object.keys(reviewsData).forEach(function(rcId){
+      var rc=reviewsData[rcId]||{};
+      var vids=rc.videos||{};
+      Object.values(vids).forEach(function(v){
+        rvRows.push({'كود المراجعة':rc.code||rcId,'الوصف':rc.desc||'','الترتيب':v.order||'','العنوان':v.title||'','الرابط':v.url1||''});
+      });
+    });
+    rvRows.sort(function(a,b){
+      var ka=a['كود المراجعة'], kb=b['كود المراجعة'];
+      return ka<kb?-1:ka>kb?1:(a['الترتيب']-b['الترتيب']);
+    });
+
+    var pubRows=Object.values(publicData).map(function(v){
+      return {'الترتيب':v.order||'','العنوان':v.title||'','الرابط':v.url1||''};
+    }).sort(function(a,b){return(a['الترتيب']||0)-(b['الترتيب']||0);});
+
+    var wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(hwRows.length?hwRows:[{'ملحوظة':'مفيش فيديوهات واجب'}]),'فيديوهات الواجب');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rvRows.length?rvRows:[{'ملحوظة':'مفيش فيديوهات مراجعة'}]),'فيديوهات المراجعة');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(pubRows.length?pubRows:[{'ملحوظة':'مفيش فيديوهات عامة'}]),'فيديوهات عامة');
+    XLSX.writeFile(wb,'كل-الفيديوهات.xlsx');
+    showToast('✅ نزل الملف!');
+  }catch(e){
+    showToast('❌ فشل التحميل: '+e.message,'warn');
+  }
+}
+
+// ===================== EXCEL EXPORT =====================
+function exportToExcel(target){
+  var source, filename;
+  if(target==='review'){
+    if(!currentReviewCode){ showToast('افتح Review Code الأول!','warn'); return; }
+    source=reviewVideos; filename='مراجعة-'+currentReviewCode+'.xlsx';
+  }else if(target==='public'){
+    source=publicVideos; filename='فيديوهات-عامة.xlsx';
+  }else{
+    if(!currentCode || currentChapter===null){ showToast('اختار الـ CODE والفصل الأول!','warn'); return; }
+    source=allVideos; filename='واجب-'+currentCode+'-فصل'+currentChapter+'.xlsx';
+  }
+
+  var list=Object.values(source||{});
+  if(!list.length){ showToast('مفيش فيديوهات هنا عشان تنزلها!','warn'); return; }
+  list.sort(function(a,b){return(a.order||0)-(b.order||0);});
+
+  // اكتشف أقصى عدد أجزاء موجود عشان نضيف أعمدة الرابط الإضافية لو محتاجين
+  var maxParts=1;
+  list.forEach(function(v){
+    for(var i=2;i<=10;i++){ if(v['url'+i]) maxParts=Math.max(maxParts,i); }
+  });
+
+  var rows=list.map(function(v){
+    var row={ 'الترتيب':v.order||'', 'العنوان':v.title||'', 'الرابط':v.url1||'' };
+    for(var i=2;i<=maxParts;i++){ row['الرابط'+i]=v['url'+i]||''; }
+    return row;
+  });
+
+  var ws=XLSX.utils.json_to_sheet(rows);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'الفيديوهات');
+  XLSX.writeFile(wb,filename);
+}
+
+// ===================== EXCEL IMPORT =====================
+var importTarget=null;
+function triggerImport(target){
+  if(target==='homework' && (!currentCode || currentChapter===null)){
+    showToast('اختار الـ CODE والفصل الأول!','warn');return;
+  }
+  if(target==='review' && !currentReviewCode){
+    showToast('افتح Review Code الأول!','warn');return;
+  }
+  importTarget=target;
+  document.getElementById('importFileInput').value='';
+  document.getElementById('importFileInput').click();
+}
+document.getElementById('importFileInput').addEventListener('change', function(e){
+  var file=e.target.files[0];
+  if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(evt){
+    try{
+      var wb=XLSX.read(evt.target.result,{type:'binary'});
+      var sheet=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+      processImportRows(rows);
+    }catch(err){
+      showToast('❌ مقدرتش أقرا الملف: '+err.message,'warn');
+    }
+  };
+  reader.readAsBinaryString(file);
+});
+function findCol(row,names){
+  var keys=Object.keys(row);
+  for(var i=0;i<names.length;i++){
+    var key=keys.find(function(k){return k.trim().toLowerCase()===names[i];});
+    if(key) return key;
+  }
+  return null;
+}
+function processImportRows(rows){
+  if(!rows.length){showToast('⚠️ الشيت فاضية!','warn');return;}
+  var titleKey=findCol(rows[0],['العنوان','عنوان','title']);
+  var linkKey=findCol(rows[0],['الرابط','رابط','link','url']);
+  var orderKey=findCol(rows[0],['الترتيب','ترتيب','order']);
+  if(!titleKey||!linkKey){
+    showToast('⚠️ لازم عمود "العنوان" وعمود "الرابط" في أول صف!','warn');return;
+  }
+
+  var basePath, existing, startOrder;
+  if(importTarget==='review'){
+    basePath='reviews/'+currentReviewCode+'/videos';
+    existing=reviewVideos;
+  }else if(importTarget==='public'){
+    basePath='publicVideos';
+    existing=publicVideos;
+  }else{
+    basePath='videos/'+currentCode+'/ch'+currentChapter;
+    existing=allVideos;
+  }
+  var orders=Object.values(existing||{}).map(function(v){return v.order||0;});
+  startOrder=orders.length?Math.max.apply(null,orders):0;
+
+  var updates={};
+  var added=0, skipped=[];
+  rows.forEach(function(row,i){
+    var title=String(row[titleKey]||'').trim();
+    var link=String(row[linkKey]||'').trim();
+    if(!title || !link){ skipped.push('صف '+(i+2)+' (ناقص عنوان أو رابط)'); return; }
+    var order=orderKey && row[orderKey]!=='' ? parseInt(row[orderKey])||(startOrder+added+1) : (startOrder+added+1);
+    var vid='v'+(Date.now()+i);
+    updates[basePath+'/'+vid]={ title:title, order:order, url1:toEmbed(link), updatedAt:Date.now() };
+    added++;
+  });
+
+  if(!added){
+    document.getElementById('importSummaryBody').innerHTML='<span style="color:var(--danger)">مفيش ولا صف صالح للاستيراد.</span>'+(skipped.length?'<br><br>الأسباب:<br>'+skipped.join('<br>'):'');
+    document.getElementById('importSummaryModal').style.display='flex';
+    return;
+  }
+
+  db.ref().update(updates).then(function(){
+    var summary='✅ تم استيراد <b>'+added+'</b> فيديو بنجاح!';
+    if(skipped.length) summary+='<br><br>⚠️ اتجاهل '+skipped.length+' صف:<br>'+skipped.join('<br>');
+    document.getElementById('importSummaryBody').innerHTML=summary;
+    document.getElementById('importSummaryModal').style.display='flex';
+    if(importTarget==='review') selectReviewCode(currentReviewCode);
+    else if(importTarget==='public') loadPublicVideosAdmin();
+    else loadVideos();
+  }).catch(function(e){
+    document.getElementById('importSummaryBody').innerHTML='<span style="color:var(--danger)">❌ فشل الحفظ: '+e.message+'</span>';
+    document.getElementById('importSummaryModal').style.display='flex';
+  });
+}
+function shortUrl(url){return(url||'').replace('https://drive.google.com/file/d/','').substring(0,28);}
+
+// ===================== MULTI-PART HELPERS =====================
+// getPartUrls: يجمع كل الروابط من الـ part rows
+function getPartUrls(){
+  var rows = document.querySelectorAll('#partsContainer .part-row');
+  var urls = [];
+  rows.forEach(function(row){ urls.push(row.querySelector('.part-url-input').value.trim()); });
+  return urls;
+}
+
+// getPartTitles: يجمع كل العناوين المخصصة من الـ part rows
+function getPartTitles(){
+  var rows = document.querySelectorAll('#partsContainer .part-row');
+  var titles = [];
+  rows.forEach(function(row, i){
+    var inp = row.querySelector('.part-title-input');
+    titles.push(inp && inp.value.trim() ? inp.value.trim() : '');
+  });
+  return titles;
+}
+
+// addPartRow: يضيف صف جزء جديد
+function addPartRow(val, titleVal){
+  var container = document.getElementById('partsContainer');
+  var idx = container.querySelectorAll('.part-row').length + 1;
+  var row = document.createElement('div');
+  row.className = 'part-row';
+  row.draggable = true;
+  var defaultTitle = 'الجزء ' + idx;
+  row.innerHTML =
+    '<span class="drag-handle" title="اسحب لتغيير الترتيب">☰</span>' +
+    '<span class="part-label">🔗 جزء ' + idx + '</span>' +
+    '<input type="text" class="part-title-input" placeholder="' + defaultTitle + '" value="' + (titleVal||'') + '" title="اسم الجزء (اختياري)">' +
+    '<input type="text" class="part-url-input" placeholder="https://drive.google.com/file/d/..." dir="ltr" value="' + (val||'') + '">' +
+    (idx > 1
+      ? '<button class="btn-remove-part" onclick="removePartRow(this)" title="حذف الجزء"><i class="fas fa-times"></i></button>'
+      : '<span style="width:34px;display:inline-block"></span>');
+  attachDragEvents(row);
+  container.appendChild(row);
+}
+
+// Drag & Drop logic
+var dragSrc = null;
+function attachDragEvents(row){
+  row.addEventListener('dragstart', function(e){
+    dragSrc = row;
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  row.addEventListener('dragend', function(){
+    row.classList.remove('dragging');
+    document.querySelectorAll('#partsContainer .part-row').forEach(function(r){ r.classList.remove('drag-over'); });
+    renumberParts();
+  });
+  row.addEventListener('dragover', function(e){
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if(row !== dragSrc){
+      document.querySelectorAll('#partsContainer .part-row').forEach(function(r){ r.classList.remove('drag-over'); });
+      row.classList.add('drag-over');
+    }
+  });
+  row.addEventListener('drop', function(e){
+    e.preventDefault();
+    if(dragSrc && dragSrc !== row){
+      var container = document.getElementById('partsContainer');
+      var rows = Array.from(container.querySelectorAll('.part-row'));
+      var srcIdx = rows.indexOf(dragSrc);
+      var tgtIdx = rows.indexOf(row);
+      if(srcIdx < tgtIdx){ container.insertBefore(dragSrc, row.nextSibling); }
+      else { container.insertBefore(dragSrc, row); }
+    }
+    row.classList.remove('drag-over');
+  });
+}
+
+function renumberParts(){
+  var rows = document.querySelectorAll('#partsContainer .part-row');
+  rows.forEach(function(row, i){
+    var label = row.querySelector('.part-label');
+    if(label) label.textContent = '🔗 جزء ' + (i+1);
+    // update remove button visibility
+    var removeBtn = row.querySelector('.btn-remove-part');
+    var placeholder = row.querySelector('span[style*="width:34px"]');
+    if(i === 0 && removeBtn){
+      // replace with spacer
+      var spacer = document.createElement('span');
+      spacer.style.cssText = 'width:34px;display:inline-block';
+      removeBtn.replaceWith(spacer);
+    } else if(i > 0 && placeholder){
+      // replace spacer with remove button
+      var btn = document.createElement('button');
+      btn.className = 'btn-remove-part';
+      btn.title = 'حذف الجزء';
+      btn.innerHTML = '<i class="fas fa-times"></i>';
+      btn.onclick = function(){ removePartRow(this); };
+      placeholder.replaceWith(btn);
+    }
+  });
+}
+
+// removePartRow: يحذف صف ويعيد ترقيم
+function removePartRow(btn){
+  btn.closest('.part-row').remove();
+  // re-number labels
+  var rows = document.querySelectorAll('#partsContainer .part-row');
+  rows.forEach(function(row, i){
+    row.querySelector('.part-label').textContent = '🔗 جزء ' + (i+1);
+  });
+}
+
+// initPartsFromData: يملي الروابط من بيانات الفيديو الموجودة
+function initPartsFromData(v){
+  document.getElementById('partsContainer').innerHTML = '';
+  // collect all urls + titles
+  var parts = [];
+  if(v && v.url1) parts.push({url:v.url1, title: v.title1||''});
+  if(v && v.url2) parts.push({url:v.url2, title: v.title2||''});
+  // extra parts: url3, url4 ...
+  var i = 3;
+  while(v && v['url'+i]){ parts.push({url:v['url'+i], title:v['title'+i]||''}); i++; }
+
+  if(!parts.length) parts.push({url:'',title:''}); // على الأقل صف واحد فاضي
+  parts.forEach(function(p){ addPartRow(p.url, p.title); });
+}
+
+// ===================== ADD NEW CHAPTER =====================
+function openAddChapterModal() {
+  var code = document.getElementById('codeSelect').value;
+  if (!code) { showToast('اختر الـ CODE الأول!', 'warn'); return; }
+  document.getElementById('newChCode').value = code;
+  document.getElementById('newChName').value = '';
+  document.getElementById('newChBranch').value = '';
+  document.getElementById('addChError').textContent = '';
+  document.getElementById('addChapterModal').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('newChName').focus(); }, 100);
+}
+function closeAddChapterModal() { document.getElementById('addChapterModal').style.display = 'none'; }
+
+function saveNewChapter() {
+  var code = document.getElementById('newChCode').value;
+  var name = document.getElementById('newChName').value.trim();
+  var branch = document.getElementById('newChBranch').value; // '', 'electric', or 'modern'
+  if (!name) { document.getElementById('addChError').textContent = '⚠️ اكتب اسم الفصل!'; return; }
+
+  // رقم الفصل الجديد = عدد الفصول الحالية + 1
+  var currentChapters = CHAPTERS[code] || [];
+  var newIdx = currentChapters.length + 1;
+
+  // احفظ في Firebase تحت chapterNames/CODE/idx
+  var tasks = [db.ref('chapterNames/' + code + '/' + newIdx).set(name)];
+  // احفظ الفرع (لو اتحدد) تحت chapterBranch/CODE/idx
+  tasks.push(branch
+    ? db.ref('chapterBranch/' + code + '/' + newIdx).set(branch)
+    : db.ref('chapterBranch/' + code + '/' + newIdx).remove());
+
+  Promise.all(tasks).then(function() {
+    // أضف للـ array المحلي
+    CHAPTERS[code] = currentChapters.concat([name]);
+
+    // أضف option للـ select
+    var sel = document.getElementById('chapterSelect');
+    var o = document.createElement('option');
+    o.value = newIdx;
+    o.textContent = name + (branch === 'electric' ? ' ⚡' : branch === 'modern' ? ' 🧬' : '');
+    sel.appendChild(o);
+    // اختره تلقائياً
+    sel.value = newIdx;
+
+    closeAddChapterModal();
+    showToast('✅ تم إضافة "' + name + '" — اضغط تحميل لإدارة فيديوهاته');
+  }).catch(function(e) {
+    document.getElementById('addChError').textContent = '❌ ' + e.message;
+  });
+}
+
+// ===================== EDIT CHAPTER =====================
+function openEditChapterModal(){
+  var code = document.getElementById("codeSelect").value;
+  var sel = document.getElementById("chapterSelect");
+  var idx = sel.value;
+  if(!code){ showToast("اختر الـ CODE الأول!","warn"); return; }
+  if(!idx){ showToast("اختر الفصل اللي عايز تعدله!","warn"); return; }
+  var name = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : "";
+  document.getElementById("editChCode").value = code + " — فصل رقم " + idx;
+  document.getElementById("editChName").value = name;
+  document.getElementById("editChBranch").value = "";
+  document.getElementById("editChError").textContent = "";
+  document.getElementById("editChapterModal").style.display = "flex";
+  setTimeout(function(){ document.getElementById("editChName").focus(); document.getElementById("editChName").select(); }, 100);
+  // جيب الفرع الحالي من Firebase
+  db.ref("chapterBranch/" + code + "/" + idx).once("value", function(snap){
+    document.getElementById("editChBranch").value = snap.val() || "";
+  });
+}
+function closeEditChapterModal(){ document.getElementById("editChapterModal").style.display = "none"; }
+function saveEditChapter(){
+  var code = document.getElementById("codeSelect").value;
+  var sel = document.getElementById("chapterSelect");
+  var idx = sel.value;
+  var newName = document.getElementById("editChName").value.trim();
+  var branch = document.getElementById("editChBranch").value; // '', 'electric', or 'modern'
+  if(!newName){ document.getElementById("editChError").textContent = "اكتب اسم الفصل!"; return; }
+  var tasks = [db.ref("chapterNames/" + code + "/" + idx).set(newName)];
+  tasks.push(branch
+    ? db.ref("chapterBranch/" + code + "/" + idx).set(branch)
+    : db.ref("chapterBranch/" + code + "/" + idx).remove());
+  Promise.all(tasks).then(function(){
+    sel.options[sel.selectedIndex].textContent = newName + (branch === 'electric' ? ' ⚡' : branch === 'modern' ? ' 🧬' : '');
+    if(CHAPTERS[code]) CHAPTERS[code][parseInt(idx)-1] = newName;
+    closeEditChapterModal();
+    showToast("تم تعديل اسم الفصل!");
+  }).catch(function(e){ document.getElementById("editChError").textContent = e.message; });
+}
+
+// ===================== DELETE CHAPTER =====================
+function openDeleteChapterConfirm(){
+  var code = document.getElementById("codeSelect").value;
+  var sel = document.getElementById("chapterSelect");
+  var idx = sel.value;
+  if(!code){ showToast("اختر الـ CODE الأول!","warn"); return; }
+  if(!idx){ showToast("اختر الفصل اللي عايز تحذفه!","warn"); return; }
+  var name = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : "";
+  document.getElementById("deleteChNamePreview").textContent = name;
+  document.getElementById("deleteChError").textContent = "";
+  document.getElementById("deleteChapterModal").style.display = "flex";
+}
+function closeDeleteChapterModal(){ document.getElementById("deleteChapterModal").style.display = "none"; }
+function confirmDeleteChapter(){
+  var code = document.getElementById("codeSelect").value;
+  var sel = document.getElementById("chapterSelect");
+  var idx = parseInt(sel.value);
+  Promise.all([
+    db.ref("chapterNames/" + code + "/" + idx).remove(),
+    db.ref("chapterBranch/" + code + "/" + idx).remove()
+  ]).then(function(){
+    sel.remove(sel.selectedIndex);
+    if(CHAPTERS[code]){ CHAPTERS[code].splice(idx-1, 1); }
+    closeDeleteChapterModal();
+    if(currentChapter == idx){ document.getElementById("tableCard").style.display="none"; currentChapter=null; allVideos={}; }
+    showToast("تم حذف الفصل!","warn");
+  }).catch(function(e){ document.getElementById("deleteChError").textContent = e.message; });
+}
+
+// ── تحميل الفصول المضافة من Firebase عند تغيير الـ CODE ──
+function onCodeChange() {
+  var code = document.getElementById('codeSelect').value;
+  var sel = document.getElementById('chapterSelect');
+  sel.innerHTML = '<option value="">⏳ جاري التحميل...</option>';
+  if (!code) { sel.innerHTML = '<option value="">-- اختر الـ CODE أولاً --</option>'; return; }
+
+  // جيب الأسماء المخصصة والفروع من Firebase
+  Promise.all([
+    db.ref('chapterNames/' + code).once('value'),
+    db.ref('chapterBranch/' + code).once('value')
+  ]).then(function(results) {
+    var customNames = results[0].val() || {};
+    var branches = results[1].val() || {};
+    sel.innerHTML = '';
+
+    // الفصول الافتراضية
+    var defaults = CHAPTERS[code] || [];
+    // الفصول المضافة من Firebase (رقم أعلى من الافتراضية)
+    var allIdxs = new Set(defaults.map(function(_, i){ return i+1; }));
+    Object.keys(customNames).forEach(function(k){
+      var idx = parseInt(k);
+      // Firebase بيحول أي node أرقامه متسلسلة لـ Array وبيحط null في خانة 0 —
+      // بنستبعدها عشان ما يظهرش فصل اسمه "null"
+      if (idx >= 1 && customNames[k]) allIdxs.add(idx);
+    });
+
+    // رتّب
+    var sorted = Array.from(allIdxs).sort(function(a,b){ return a-b; });
+
+    sorted.forEach(function(idx) {
+      var o = document.createElement('option');
+      o.value = idx;
+      // الأسم المخصص أولاً، ثم الافتراضي
+      var name = (customNames[idx] && customNames[idx].trim())
+        ? customNames[idx]
+        : (defaults[idx-1] || 'فصل ' + idx);
+      var b = branches[idx];
+      o.textContent = name + (b === 'electric' ? ' ⚡' : b === 'modern' ? ' 🧬' : '');
+      sel.appendChild(o);
+    });
+
+    // تحديث CHAPTERS المحلي بالمضاف
+    var updatedList = sorted.map(function(idx){
+      return (customNames[idx] && customNames[idx].trim()) ? customNames[idx] : (defaults[idx-1] || 'فصل ' + idx);
+    });
+    CHAPTERS[code] = updatedList;
+  });
+}
+
+
+function switchTab(tab){
+  document.getElementById('panelHomework').style.display=tab==='homework'?'block':'none';
+  document.getElementById('panelReview').style.display=tab==='review'?'block':'none';
+  document.getElementById('panelPublic').style.display=tab==='public'?'block':'none';
+  document.getElementById('tabHomework').className='tab-btn'+(tab==='homework'?' active':'');
+  document.getElementById('tabReview').className='tab-btn'+(tab==='review'?' active':'');
+  document.getElementById('tabPublic').className='tab-btn'+(tab==='public'?' active':'');
+  if(tab==='review')loadReviewCodes();
+  if(tab==='public')loadPublicVideosAdmin();
+}
+
+// ===================== HOMEWORK =====================
+function loadVideos(){
+  var code=document.getElementById('codeSelect').value;
+  var idx=document.getElementById('chapterSelect').value;
+  var sel=document.getElementById('chapterSelect');
+  var name=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:'';
+  if(!code||!idx){showToast('اختر الـ CODE والفصل أولاً','warn');return;}
+  currentCode=code;currentChapter=idx;
+  document.getElementById('tableTitle').textContent=code+' — '+name;
+  document.getElementById('tableCard').style.display='block';
+  document.getElementById('videoBody').innerHTML='<tr><td colspan="6" style="text-align:center;padding:2rem;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+  db.ref('videos/'+code+'/ch'+idx).on('value',function(snap){
+    allVideos=snap.val()||{};renderHwTable();
+  });
+}
+function renderHwTable(){
+  var tbody=document.getElementById('videoBody');
+  var entries=Object.entries(allVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  if(!entries.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:3rem;color:#aaa"><i class="fas fa-video" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#ccc"></i>لا يوجد فيديوهات — اضغط "+ فيديو جديد"</td></tr>';return;}
+  tbody.innerHTML='';
+  entries.forEach(function(entry){
+    var vid=entry[0],v=entry[1];
+    var partsCount = countParts(v);
+    var tr=document.createElement('tr');
+    var acCount=Object.keys(v.accessCodes||{}).length;
+    tr.innerHTML='<td><span class="order-badge">'+(v.order||0)+'</span></td>'+
+      '<td><strong>'+(v.title||'')+'</strong></td>'+
+      '<td><span class="url-preview">'+shortUrl(v.url1)+'…</span></td>'+
+      '<td><span class="parts-badge">'+partsCount+' جزء</span></td>'+
+      '<td>'+(acCount?'<span class="order-badge">'+acCount+' كود</span>':'<span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-size:.8rem;font-weight:700">🌍 الكل</span>')+'</td>'+
+      '<td>'+
+        '<button class="btn-up" onclick="moveHw(\''+vid+'\',-1)"><i class="fas fa-arrow-up"></i></button>'+
+        '<button class="btn-down" onclick="moveHw(\''+vid+'\',1)"><i class="fas fa-arrow-down"></i></button>'+
+        '<button class="btn-edit" onclick="editHw(\''+vid+'\')"><i class="fas fa-edit"></i></button>'+
+        '<button class="btn-key" onclick="openHwAccessCodes(\''+vid+'\')"><i class="fas fa-key"></i></button>'+
+        '<button class="btn-delete" onclick="deleteHw(\''+vid+'\')"><i class="fas fa-trash"></i></button>'+
+      '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+// عد الأجزاء في كائن الفيديو
+function countParts(v){
+  var count = 0;
+  var i = 1;
+  while(v['url'+i]){ count++; i++; }
+  return count || 1;
+}
+
+function moveHw(vid,dir){
+  var entries=Object.entries(allVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  var idx=entries.findIndex(function(e){return e[0]===vid;});
+  var si=idx+dir;if(si<0||si>=entries.length)return;
+  var base='videos/'+currentCode+'/ch'+currentChapter;
+  db.ref(base+'/'+entries[idx][0]+'/order').set(entries[si][1].order||0);
+  db.ref(base+'/'+entries[si][0]+'/order').set(entries[idx][1].order||0);
+}
+function openAddModal(){
+  saveTarget='homework';editingId=null;
+  document.getElementById('modalTitle').textContent='➕ فيديو جديد';
+  document.getElementById('vTitle').value='';
+  document.getElementById('vOrder').value=nextHwOrder();
+  document.getElementById('formError').textContent='';
+  document.getElementById('partsContainer').innerHTML='';
+  addPartRow('');
+  document.getElementById('videoModal').style.display='flex';
+}
+function nextHwOrder(){var o=Object.values(allVideos).map(function(v){return v.order||0;});return o.length?Math.max.apply(null,o)+1:1;}
+function editHw(vid){
+  var v=allVideos[vid];if(!v)return;
+  saveTarget='homework';editingId=vid;
+  document.getElementById('modalTitle').textContent='✏️ تعديل الفيديو';
+  document.getElementById('vTitle').value=v.title||'';
+  document.getElementById('vOrder').value=v.order||1;
+  document.getElementById('formError').textContent='';
+  initPartsFromData(v);
+  document.getElementById('videoModal').style.display='flex';
+}
+function deleteHw(vid){
+  var v=allVideos[vid];if(!v)return;
+  if(!confirm('هتحذف: "'+v.title+'"؟'))return;
+  db.ref('videos/'+currentCode+'/ch'+currentChapter+'/'+vid).remove();
+  showToast('🗑️ تم الحذف!','warn');
+}
+
+// ===================== REVIEW CODES =====================
+async function runDiag(){
+  var code=document.getElementById('diagCode').value.trim();
+  var out=document.getElementById('diagResult');
+  if(!code){out.innerHTML='<span style="color:var(--danger)">اكتب كود الأول</span>';return;}
+  out.innerHTML='⏳ جاري الفحص...';
+  var lines=[];
+  var bad=/[.#$\/\[\]]/.test(code);
+  lines.push((bad?'❌':'✅')+' شكل الكود: '+code+(bad?' — فيه رمز ممنوع (. # $ / [ ]) لازم يتغير!':' — سليم'));
+  try{
+    var idxSnap=await db.ref('reviewIndex/'+code).once('value');
+    var rcId=idxSnap.val();
+    lines.push((rcId?'✅':'❌')+' reviewIndex/'+code+' → '+(rcId||'مش موجود'));
+    if(rcId){
+      var rcSnap=await db.ref('reviews/'+rcId).once('value');
+      var rc=rcSnap.val();
+      lines.push((rc?'✅':'❌')+' reviews/'+rcId+' → '+(rc?JSON.stringify({code:rc.code,desc:rc.desc,videosCount:Object.keys(rc.videos||{}).length}):'مش موجود (index يتيم)'));
+    }
+  }catch(e){lines.push('❌ خطأ قراءة reviewIndex/reviews: '+e.message);}
+  try{
+    var acIdxSnap=await db.ref('accessCodeIndex/'+code).once('value');
+    var acRcId=acIdxSnap.val();
+    lines.push((acRcId?'✅':'❌')+' accessCodeIndex/'+code+' → '+(acRcId||'مش موجود'));
+  }catch(e){lines.push('❌ خطأ قراءة accessCodeIndex: '+e.message);}
+  try{
+    var stSnap=await db.ref('students/'+code).once('value');
+    var st=stSnap.val();
+    lines.push(st?'ℹ️ students/'+code+' موجود كمان (كود ده مسجل كـ طالب كذلك): '+JSON.stringify(st):'ℹ️ مش موجود في students (طبيعي لو ده Review Code بحت)');
+  }catch(e){}
+  try{
+    var resp=await fetch("https://the-process-login.theprocess-amro.workers.dev/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:code})});
+    var data=await resp.json();
+    lines.push((data.type==='invalid'?'❌':'✅')+' رد اللوجين الفعلي: '+JSON.stringify(data));
+  }catch(e){lines.push('❌ فشل نداء اللوجين: '+e.message);}
+  out.innerHTML=lines.join('\n\n');
+}
+function loadReviewCodes(){
+  document.getElementById('reviewCodesBody').innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+  db.ref('reviews').once('value',function(snap){
+    var data=snap.val()||{};
+    var tbody=document.getElementById('reviewCodesBody');
+    var entries=Object.entries(data);
+    // إصلاح تلقائي: أي Review Code قديم اتحفظ من غير reviewIndex (باگ سابق) بيتظبط هنا
+    db.ref('reviewIndex').once('value',function(idxSnap){
+      var idx=idxSnap.val()||{};
+      var fixes={};
+      var skipped=[];
+      entries.forEach(function(entry){
+        var rcId=entry[0],rc=entry[1];
+        if(!rc.code) return;
+        if(/[.#$\/\[\]]/.test(rc.code)){ skipped.push(rc.code); return; } // كود فيه رمز ممنوع في المفاتيح، متجاهلينه
+        if(idx[rc.code]!==rcId) fixes['reviewIndex/'+rc.code]=rcId;
+      });
+      if(skipped.length) console.warn('Review codes فيها رموز ممنوعة (. # $ / [ ]) اتجاهلت من الإصلاح التلقائي، لازم تتغير يدويًا:', skipped);
+      if(Object.keys(fixes).length) db.ref().update(fixes).catch(function(e){ console.warn('فشل الإصلاح التلقائي:', e.message); });
+    });
+    // نفس الإصلاح لكن لأكواد الوصول (accessCodes) اللي اتحفظت قبل ما نبني accessCodeIndex
+    db.ref('accessCodeIndex').once('value',function(acIdxSnap){
+      var acIdx=acIdxSnap.val()||{};
+      var acFixes={};
+      var acSkipped=[];
+      entries.forEach(function(entry){
+        var rcId=entry[0],rc=entry[1];
+        var codes=Object.values(rc.accessCodes||{});
+        codes.forEach(function(c){
+          if(!c) return;
+          if(/[.#$\/\[\]]/.test(c)){ acSkipped.push(c); return; }
+          if(acIdx[c]!==rcId) acFixes['accessCodeIndex/'+c]=rcId;
+        });
+      });
+      if(acSkipped.length) console.warn('أكواد وصول فيها رموز ممنوعة اتجاهلت:', acSkipped);
+      if(Object.keys(acFixes).length) db.ref().update(acFixes).catch(function(e){ console.warn('فشل إصلاح accessCodeIndex:', e.message); });
+    });
+    if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa">لا يوجد Review Codes بعد</td></tr>';return;}
+    tbody.innerHTML='';
+    entries.forEach(function(entry){
+      var rcId=entry[0],rc=entry[1];
+      var vc=Object.keys(rc.videos||{}).length;
+      var ac=Object.keys(rc.accessCodes||{}).length;
+      var badKey=rc.code&&/[.#$\/\[\]]/.test(rc.code);
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td><strong style="font-family:monospace;color:#6f42c1">'+(rc.code||rcId)+'</strong>'+(badKey?' <span title="الكود ده فيه رمز ممنوع (زي النقطة) وده بيمنع الطلاب من الدخول! دوس تعديل عشان تصلحه" style="color:#dc3545">⚠️</span>':'')+'</td>'+
+        '<td style="color:#777;font-size:.88rem">'+(rc.desc||'—')+'</td>'+
+        '<td><span class="parts-badge">'+vc+' فيديو</span></td>'+
+        '<td><span class="order-badge">'+ac+' كود</span></td>'+
+        '<td><button onclick="selectReviewCode(\''+rcId+'\')" style="background:#f0e8fd;color:#6f42c1;border:none;padding:.35rem .8rem;border-radius:7px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.85rem;font-weight:700"><i class="fas fa-folder-open"></i> فتح</button> '+
+        '<button onclick="editReviewCodeValue(\''+rcId+'\',\''+(rc.code||'').replace(/'/g,"\\'")+'\')" style="background:#fff3e0;color:#e67e22;border:none;padding:.35rem .6rem;border-radius:7px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.85rem;font-weight:700" title="تعديل الكود"><i class="fas fa-pen"></i></button> '+
+        '<button class="btn-delete" onclick="deleteReviewCode(\''+rcId+'\')"><i class="fas fa-trash"></i></button></td>';
+      tbody.appendChild(tr);
+    });
+  });
+}
+function selectReviewCode(rcId){
+  currentReviewCode=rcId;
+  db.ref('reviews/'+rcId).once('value',function(snap){
+    var rc=snap.val()||{};
+    reviewVideos=rc.videos||{};
+    document.getElementById('reviewVideosTitle').textContent='🎯 '+(rc.code||rcId)+(rc.desc?' — '+rc.desc:'');
+    document.getElementById('reviewVideosSection').style.display='block';
+    renderReviewTable();
+  });
+}
+function renderReviewTable(){
+  var tbody=document.getElementById('reviewVideoBody');
+  var entries=Object.entries(reviewVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:3rem;color:#aaa"><i class="fas fa-video" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#ccc"></i>لا يوجد فيديوهات — اضغط "+ فيديو جديد"</td></tr>';return;}
+  tbody.innerHTML='';
+  entries.forEach(function(entry){
+    var vid=entry[0],v=entry[1];
+    var partsCount = countParts(v);
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td><span class="order-badge">'+(v.order||0)+'</span></td>'+
+      '<td><strong>'+(v.title||'')+'</strong></td>'+
+      '<td><span class="url-preview">'+shortUrl(v.url1)+'…</span></td>'+
+      '<td><span class="parts-badge">'+partsCount+' جزء</span></td>'+
+      '<td>'+
+        '<button class="btn-up" onclick="moveRev(\''+vid+'\',-1)"><i class="fas fa-arrow-up"></i></button>'+
+        '<button class="btn-down" onclick="moveRev(\''+vid+'\',1)"><i class="fas fa-arrow-down"></i></button>'+
+        '<button class="btn-edit" onclick="editRev(\''+vid+'\')"><i class="fas fa-edit"></i></button>'+
+        '<button class="btn-delete" onclick="deleteRev(\''+vid+'\')"><i class="fas fa-trash"></i></button>'+
+      '</td>';
+    tbody.appendChild(tr);
+  });
+}
+// ===================== PUBLIC VIDEOS (بدون تسجيل دخول) =====================
+function loadPublicVideosAdmin(){
+  document.getElementById('publicVideoBody').innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+  db.ref('publicVideos').on('value',function(snap){
+    publicVideos=snap.val()||{};renderPublicTable();
+  });
+}
+function renderPublicTable(){
+  var tbody=document.getElementById('publicVideoBody');
+  var entries=Object.entries(publicVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:3rem;color:#aaa"><i class="fas fa-video" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#ccc"></i>لا يوجد فيديوهات — اضغط "+ فيديو جديد"</td></tr>';return;}
+  tbody.innerHTML='';
+  entries.forEach(function(entry){
+    var vid=entry[0],v=entry[1];
+    var partsCount = countParts(v);
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td><span class="order-badge">'+(v.order||0)+'</span></td>'+
+      '<td><strong>'+(v.title||'')+'</strong></td>'+
+      '<td><span class="url-preview">'+shortUrl(v.url1)+'…</span></td>'+
+      '<td><span class="parts-badge">'+partsCount+' جزء</span></td>'+
+      '<td>'+
+        '<button class="btn-up" onclick="movePub(\''+vid+'\',-1)"><i class="fas fa-arrow-up"></i></button>'+
+        '<button class="btn-down" onclick="movePub(\''+vid+'\',1)"><i class="fas fa-arrow-down"></i></button>'+
+        '<button class="btn-edit" onclick="editPub(\''+vid+'\')"><i class="fas fa-edit"></i></button>'+
+        '<button class="btn-delete" onclick="deletePub(\''+vid+'\')"><i class="fas fa-trash"></i></button>'+
+      '</td>';
+    tbody.appendChild(tr);
+  });
+}
+function movePub(vid,dir){
+  var entries=Object.entries(publicVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  var idx=entries.findIndex(function(e){return e[0]===vid;});
+  var si=idx+dir;if(si<0||si>=entries.length)return;
+  db.ref('publicVideos/'+entries[idx][0]+'/order').set(entries[si][1].order||0);
+  db.ref('publicVideos/'+entries[si][0]+'/order').set(entries[idx][1].order||0);
+}
+function nextPubOrder(){var o=Object.values(publicVideos).map(function(v){return v.order||0;});return o.length?Math.max.apply(null,o)+1:1;}
+function openAddPublicVideo(){
+  saveTarget='public';editingPublicVid=null;
+  document.getElementById('modalTitle').textContent='➕ فيديو عام جديد';
+  document.getElementById('vTitle').value='';
+  document.getElementById('vOrder').value=nextPubOrder();
+  document.getElementById('formError').textContent='';
+  document.getElementById('partsContainer').innerHTML='';
+  addPartRow('');
+  document.getElementById('videoModal').style.display='flex';
+}
+function editPub(vid){
+  var v=publicVideos[vid];if(!v)return;
+  saveTarget='public';editingPublicVid=vid;
+  document.getElementById('modalTitle').textContent='✏️ تعديل الفيديو العام';
+  document.getElementById('vTitle').value=v.title||'';
+  document.getElementById('vOrder').value=v.order||1;
+  document.getElementById('formError').textContent='';
+  initPartsFromData(v);
+  document.getElementById('videoModal').style.display='flex';
+}
+function deletePub(vid){
+  var v=publicVideos[vid];if(!v)return;
+  if(!confirm('هتحذف: "'+v.title+'"؟'))return;
+  db.ref('publicVideos/'+vid).remove();
+  showToast('🗑️ تم الحذف!','warn');
+}
+
+// ══════════════════════════════
+//  TASKS MANAGEMENT
+// ══════════════════════════════
+//  TASKS — DAY-BASED SYSTEM
+// ══════════════════════════════
+// Structure: _days = [ { label:'اليوم الأول', title:'مراجعة الكهرباء', tasks:[{text:'...'}, ...] }, ... ]
+var _days = [];      // array of day objects
+var _curDay = -1;    // index of selected day
+
+function openTasksModal(){
+  if(!currentReviewCode){ showToast('افتح review code الأول!','warn'); return; }
+  db.ref('reviews/'+currentReviewCode+'/tasks').once('value', function(snap){
+    _days = [];
+    if(snap.exists()){
+      var val = snap.val();
+      // ── New format: array of days ──────────────────────────
+      if(Array.isArray(val) && val.length && val[0] && typeof val[0]==='object' && ('tasks' in val[0])){
+        _days = val.filter(Boolean);
+      }
+      // ── Old flat format: array/object of task strings → migrate to Day 1 ──
+      else {
+        var flatTasks = [];
+        if(Array.isArray(val)) flatTasks = val.filter(Boolean).map(function(t){return typeof t==='string'?{text:t}:t;});
+        else flatTasks = Object.values(val).sort(function(a,b){return(a.order||0)-(b.order||0);}).map(function(t){return {text:t.text||t};});
+        if(flatTasks.length) _days = [{label:'اليوم الأول', title:'', tasks:flatTasks}];
+      }
+    }
+    _curDay = _days.length ? 0 : -1;
+    renderDaysTabs();
+    renderDayEditor();
+    document.getElementById('tasksModal').style.display='flex';
+  });
+}
+
+function closeTasksModal(){ document.getElementById('tasksModal').style.display='none'; }
+
+// ── Tabs ──────────────────────────────────────
+function renderDaysTabs(){
+  var tabs = document.getElementById('daysTabs');
+  if(!_days.length){ tabs.innerHTML='<span style="color:#bbb;font-size:.85rem">لا يوجد أيام بعد</span>'; return; }
+  tabs.innerHTML = _days.map(function(d,i){
+    var active = i===_curDay;
+    return '<button onclick="_selectDay('+i+')" style="padding:.4rem .9rem;border-radius:8px 8px 0 0;border:2px solid '+(active?'#e67e22':'#ddd')+';border-bottom:none;background:'+(active?'#e67e22':'#fff')+';color:'+(active?'#fff':'#555')+';font-family:Tajawal,sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">'+
+      (d.label||('اليوم '+(i+1)))+
+    '</button>';
+  }).join('');
+}
+
+function _selectDay(i){
+  _saveCurrentDayFromUI(); // حفظ التعديلات قبل الانتقال
+  _curDay = i;
+  renderDaysTabs();
+  renderDayEditor();
+}
+
+function addDay(){
+  _saveCurrentDayFromUI();
+  _days.push({label:'اليوم '+(_days.length+1), title:'', tasks:[]});
+  _curDay = _days.length-1;
+  renderDaysTabs();
+  renderDayEditor();
+  // focus على اسم اليوم
+  setTimeout(function(){ var el=document.getElementById('dayLabelInput'); if(el)el.focus(); },60);
+}
+
+function deleteCurDay(){
+  if(_curDay<0||_curDay>=_days.length)return;
+  var name = _days[_curDay].label||('اليوم '+(_curDay+1));
+  if(!confirm('هتحذف "'+name+'" وكل مهامه؟'))return;
+  _days.splice(_curDay,1);
+  _curDay = _days.length ? Math.min(_curDay, _days.length-1) : -1;
+  renderDaysTabs();
+  renderDayEditor();
+}
+
+// ── Day Editor ────────────────────────────────
+function renderDayEditor(){
+  var ed = document.getElementById('dayEditor');
+  var delBtn = document.getElementById('btnDelDay');
+  if(_curDay<0||_curDay>=_days.length){
+    ed.innerHTML='<p style="color:#bbb;text-align:center;font-size:.9rem;padding:1rem 0">اضغط يوم أو أضف يوم جديد</p>';
+    if(delBtn)delBtn.style.display='none';
+    return;
+  }
+  if(delBtn)delBtn.style.display='';
+  var d = _days[_curDay];
+  var tasksHtml = (d.tasks||[]).map(function(t,i){
+    return '<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem">'+
+      '<span style="color:#aaa;font-size:.8rem;min-width:22px;text-align:center">'+(i+1)+'</span>'+
+      '<input type="text" value="'+(t.text||'').replace(/"/g,'&quot;')+'" placeholder="نص المهمة..." '+
+        'style="flex:1;padding:.45rem .7rem;border:1.5px solid #ddd;border-radius:8px;font-family:Tajawal,sans-serif;font-size:.88rem" '+
+        'id="dayTask_'+i+'" oninput="">'+
+      '<button onclick="_removeDayTask('+i+')" style="background:#fde8e8;color:#e74c3c;border:none;padding:.3rem .55rem;border-radius:7px;cursor:pointer"><i class="fas fa-times"></i></button>'+
+    '</div>';
+  }).join('');
+
+  ed.innerHTML =
+    '<div style="display:flex;gap:.6rem;margin-bottom:.7rem;flex-wrap:wrap">'+ 
+      '<div style="flex:1;min-width:120px"><label style="font-size:.78rem;font-weight:700;color:#888;display:block;margin-bottom:.25rem">📅 اسم اليوم *</label>'+
+        '<input type="text" id="dayLabelInput" value="'+(d.label||'').replace(/"/g,'&quot;')+'" placeholder="اليوم الأول" '+
+          'style="width:100%;padding:.5rem .8rem;border:2px solid #e67e22;border-radius:8px;font-family:Tajawal,sans-serif;font-size:.9rem;font-weight:700"></div>'+
+      '<div style="flex:2;min-width:140px"><label style="font-size:.78rem;font-weight:700;color:#888;display:block;margin-bottom:.25rem">📝 عنوان اليوم (اختياري)</label>'+
+        '<input type="text" id="dayTitleInput" value="'+(d.title||'').replace(/"/g,'&quot;')+'" placeholder="مثال: مراجعة الكهرباء الساكنة" '+
+          'style="width:100%;padding:.5rem .8rem;border:1.5px solid #ddd;border-radius:8px;font-family:Tajawal,sans-serif;font-size:.9rem"></div>'+
+    '</div>'+
+    '<div style="flex:3;min-width:160px"><label style="font-size:.78rem;font-weight:700;color:#888;display:block;margin-bottom:.25rem">🎉 رسالة التشجيع (لما يخلص اليوم)</label>'+
+        '<input type="text" id="daySuccessInput" value="'+(d.successMessage||'').replace(/"/g,'&quot;')+'" placeholder="مثال: أنت نجم يا باشا! 🌟" '+
+          'style="width:100%;padding:.5rem .8rem;border:1.5px solid #27ae60;border-radius:8px;font-family:Tajawal,sans-serif;font-size:.9rem"></div>'+
+    '</div>'+
+    '<div style="font-size:.8rem;font-weight:700;color:#555;margin-bottom:.4rem">📋 مهام اليوم</div>'+
+    '<div id="dayTasksList">'+tasksHtml+'</div>'+
+    '<button onclick="_addDayTask()" style="background:none;border:1.5px dashed #e67e22;color:#e67e22;padding:.38rem 1rem;border-radius:8px;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.85rem;font-weight:700;margin-top:.3rem"><i class="fas fa-plus"></i> مهمة جديدة</button>';
+}
+
+function _addDayTask(){
+  _saveCurrentDayFromUI();
+  _days[_curDay].tasks.push({text:''});
+  renderDayEditor();
+  setTimeout(function(){
+    var inputs=document.querySelectorAll('#dayTasksList input');
+    if(inputs.length) inputs[inputs.length-1].focus();
+  },50);
+}
+
+function _removeDayTask(i){
+  _saveCurrentDayFromUI();
+  _days[_curDay].tasks.splice(i,1);
+  renderDayEditor();
+}
+
+// اقرأ القيم من الـ UI وحطها في _days قبل أي انتقال أو حفظ
+function _saveCurrentDayFromUI(){
+  if(_curDay<0||_curDay>=_days.length)return;
+  var labelEl = document.getElementById('dayLabelInput');
+  var titleEl = document.getElementById('dayTitleInput');
+  if(labelEl) _days[_curDay].label = labelEl.value.trim() || ('اليوم '+(_curDay+1));
+  if(titleEl) _days[_curDay].title = titleEl.value.trim();
+  var successEl = document.getElementById('daySuccessInput');
+  if(successEl) _days[_curDay].successMessage = successEl.value.trim();
+  // اقرأ نصوص المهام
+  var taskInputs = document.querySelectorAll('#dayTasksList input[id^="dayTask_"]');
+  taskInputs.forEach(function(inp,i){
+    if(_days[_curDay].tasks[i]) _days[_curDay].tasks[i].text = inp.value.trim();
+  });
+}
+
+function saveTasks(){
+  _saveCurrentDayFromUI();
+  // تنظيف: شيل المهام الفاضية وأيام بدون مهام
+  var clean = _days.map(function(d,di){
+    return {
+      label: d.label||('اليوم '+(di+1)),
+      title: d.title||'',
+      successMessage: d.successMessage||'',
+      tasks: (d.tasks||[]).filter(function(t){return (t.text||'').trim();}).map(function(t,i){return {text:t.text.trim(),order:i};})
+    };
+  }).filter(function(d){return d.label;});
+
+  db.ref('reviews/'+currentReviewCode+'/tasks').set(clean).then(function(){
+    closeTasksModal();
+    showToast('✅ تم حفظ '+clean.length+' يوم!');
+  }).catch(function(e){ document.getElementById('tasksError').textContent='❌ '+e.message; });
+}
+
+// ══════════════════════════════
+//  PROGRESS VIEWER
+// ══════════════════════════════
+function openProgressModal(){
+  if(!currentReviewCode){ showToast('افتح review code الأول!','warn'); return; }
+  document.getElementById('progressModal').style.display='flex';
+  document.getElementById('progressBody').innerHTML='<div style="text-align:center;padding:2rem;color:#888"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+
+  // جيب أكواد الطلاب في المجموعة دي
+  db.ref('reviews/'+currentReviewCode).once('value', function(snap){
+    var rc = snap.val()||{};
+    var accessCodes = rc.accessCodes ? Object.values(rc.accessCodes) : [];
+    var tasks = [];
+    if(rc.tasks){
+      if(Array.isArray(rc.tasks)) {
+        // New format: array of days
+        if(rc.tasks.length && rc.tasks[0] && typeof rc.tasks[0]==='object' && 'tasks' in rc.tasks[0]){
+          rc.tasks.forEach(function(day){ if(day&&day.tasks) tasks = tasks.concat(day.tasks.filter(Boolean)); });
+        } else {
+          tasks = rc.tasks.filter(Boolean);
+        }
+      }
+      else tasks = Object.values(rc.tasks).sort(function(a,b){return(a.order||0)-(b.order||0);});
+    }
+    var tasksCount = tasks.length;
+
+    if(!accessCodes.length){
+      document.getElementById('progressBody').innerHTML='<p style="color:#aaa;text-align:center">مفيش أكواد في المجموعة دي</p>';
+      return;
+    }
+
+    // جيب progress كل الطلاب
+    db.ref('studentProgress').once('value', function(pSnap){
+      var allProgress = pSnap.val()||{};
+      // جيب بيانات الطلاب عشان نعرف أسمائهم
+      db.ref('students').once('value', function(sSnap){
+        var allStudents = sSnap.val()||{};
+        var rows = accessCodes.map(function(code){
+          var prog = (allProgress[code]&&allProgress[code][currentReviewCode]) || {};
+          var studentName = (allStudents[code]&&allStudents[code].name) || code;
+          var watched = prog.watched === true;
+          var tasksDone = 0;
+          if(prog.tasks && tasksCount > 0){
+            for(var i=0;i<tasksCount;i++){ if(prog.tasks[i]===true) tasksDone++; }
+          }
+          var watchedAt = prog.watchedAt ? new Date(prog.watchedAt).toLocaleDateString('ar-EG',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+          return {code:code, name:studentName, watched:watched, watchedAt:watchedAt, tasksDone:tasksDone, tasksCount:tasksCount};
+        });
+
+        // sort: الشايفين الأول
+        rows.sort(function(a,b){ return (b.watched?1:0)-(a.watched?1:0) || b.tasksDone-a.tasksDone; });
+
+        var watchedCount = rows.filter(function(r){return r.watched;}).length;
+        var html = '<div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">';
+        html += '<div style="background:#e8f5e9;border-radius:10px;padding:.6rem 1.2rem;font-weight:700;color:#27ae60">👁️ شافوا الفيديو: '+watchedCount+'/'+rows.length+'</div>';
+        if(tasksCount>0){
+          var fullDone = rows.filter(function(r){return r.tasksDone===tasksCount;}).length;
+          html += '<div style="background:#fff3e0;border-radius:10px;padding:.6rem 1.2rem;font-weight:700;color:#e67e22">✅ خلصوا المهام: '+fullDone+'/'+rows.length+'</div>';
+        }
+        html += '</div>';
+        html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.88rem">';
+        html += '<thead><tr style="background:#f5f5f5"><th style="padding:.6rem .8rem;text-align:right;border-bottom:2px solid #eee">الطالب</th><th style="padding:.6rem .8rem;text-align:right;border-bottom:2px solid #eee">الكود</th><th style="padding:.6rem .8rem;border-bottom:2px solid #eee">شاف الفيديو</th>';
+        if(tasksCount>0) html += '<th style="padding:.6rem .8rem;border-bottom:2px solid #eee">المهام</th>';
+        html += '</tr></thead><tbody>';
+        // store tasks + rows globally for task details modal
+        window._progressTasks = tasks;
+        window._progressRows = rows;
+
+        rows.forEach(function(r){
+          var watchDetailsBtn = ' <button onclick="openWatchDetails(\''+r.code+'\',\''+r.name.replace(/'/g,"\\'")+'\')" title="اعرف شاف أي جزء" style="background:#e8f5e9;border:none;color:#27ae60;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:.78rem;margin-right:4px">🔍</button>';
+          var watchCell = (r.watched
+            ? '<span style="color:#27ae60;font-weight:700">✓ نعم</span>'+(r.watchedAt?'<br><small style="color:#aaa">'+r.watchedAt+'</small>':'')
+            : '<span style="color:#e74c3c">✗ لأ</span>') + watchDetailsBtn;
+          var taskCell = '';
+          if(tasksCount>0){
+            var pct = Math.round(r.tasksDone/r.tasksCount*100);
+            var color = pct===100?'#27ae60':pct>0?'#e67e22':'#e74c3c';
+            var detailsBtn = pct < 100
+              ? ' <button onclick="openTaskDetails(\''+r.code+'\',\''+r.name.replace(/'/g,"\\'")+'\')" title="اعرف إيه المهام اللي خلصت" style="background:#fff3e0;border:none;color:#e67e22;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:.78rem;margin-right:4px">🔍</button>'
+              : '';
+            taskCell = '<td style="padding:.6rem .8rem;text-align:center">'+detailsBtn+'<span style="color:'+color+';font-weight:700">'+r.tasksDone+'/'+r.tasksCount+'</span><div style="background:#eee;border-radius:99px;height:5px;width:60px;margin:.3rem auto 0"><div style="background:'+color+';height:5px;border-radius:99px;width:'+pct+'%"></div></div></td>';
+          }
+          var nameCell = '<td style="padding:.6rem .8rem;font-weight:600">'+r.name+
+            ' <button onclick="openRenameStudent(\''+r.code+'\',\''+r.name.replace(/'/g,"\\'")+'\')" title="تغيير الاسم" style="background:#e8f4fd;border:none;color:#2980b9;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:.78rem">✏️</button></td>';
+          html += '<tr style="border-bottom:1px solid #f0f0f0">'+
+            nameCell+
+            '<td style="padding:.6rem .8rem;font-family:monospace;color:#666">'+r.code+'</td>'+
+            '<td style="padding:.6rem .8rem;text-align:center">'+watchCell+'</td>'+
+            taskCell+
+          '</tr>';
+        });
+        html += '</tbody></table></div>';
+        document.getElementById('progressBody').innerHTML = html;
+      });
+    });
+  });
+}
+function closeProgressModal(){ document.getElementById('progressModal').style.display='none'; }
+
+// ── Rename Student ──
+function openRenameStudent(code, currentName){
+  document.getElementById('renameStudentCode').value = code;
+  document.getElementById('renameStudentName').value = currentName === code ? '' : currentName;
+  document.getElementById('renameStudentError').textContent = '';
+  document.getElementById('renameStudentModal').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('renameStudentName').focus(); }, 100);
+}
+function closeRenameStudentModal(){ document.getElementById('renameStudentModal').style.display = 'none'; }
+function saveStudentName(){
+  var code = document.getElementById('renameStudentCode').value.trim();
+  var name = document.getElementById('renameStudentName').value.trim();
+  if(!name){ document.getElementById('renameStudentError').textContent = '⚠️ اكتب اسم الطالب!'; return; }
+  db.ref('students/'+code+'/name').set(name).then(function(){
+    closeRenameStudentModal();
+    showToast('✅ تم حفظ اسم "'+name+'"!');
+    // refresh progress modal
+    openProgressModal();
+  }).catch(function(e){ document.getElementById('renameStudentError').textContent = '❌ '+e.message; });
+}
+
+// ── Watch Details ──
+function openWatchDetails(code, studentName){
+  document.getElementById('watchDetailsStudentName').textContent = '👤 '+studentName+' ('+code+')';
+  document.getElementById('watchDetailsList').innerHTML = '<p style="color:#aaa;text-align:center">⏳ جاري التحميل...</p>';
+  document.getElementById('watchDetailsModal').style.display = 'flex';
+
+  db.ref('studentProgress/'+code+'/'+currentReviewCode+'/watchedParts').once('value', function(wpSnap){
+    var watchedParts = wpSnap.val() || {};
+
+    var videosPromise = Object.keys(reviewVideos).length
+      ? Promise.resolve(reviewVideos)
+      : db.ref('reviews/'+currentReviewCode+'/videos').once('value').then(function(s){ return s.val()||{}; });
+
+    videosPromise.then(function(videosObj){
+      renderWatchDetailsHtml(videosObj, watchedParts);
+    });
+  });
+}
+function renderWatchDetailsHtml(videosObj, watchedParts){
+  var entries = Object.entries(videosObj).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+
+  if(!entries.length){
+    document.getElementById('watchDetailsList').innerHTML = '<p style="color:#aaa;text-align:center">لا يوجد فيديوهات في المجموعة دي</p>';
+    return;
+  }
+
+  var html = entries.map(function(entry){
+    var vid = entry[0], v = entry[1];
+    var partsCount = 0, i = 1;
+    while(v['url'+i]){ partsCount++; i++; }
+    if(!partsCount) partsCount = 1;
+
+    var watchedForVideo = watchedParts[vid] || {};
+    var partsHtml = '';
+    for(var p=1;p<=partsCount;p++){
+      var done = watchedForVideo[p] === true;
+      var partTitle = v['title'+p] || ('الجزء '+p);
+      partsHtml += '<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border-radius:7px;background:'+(done?'#e8f5e9':'#fde8e8')+';margin-bottom:.3rem">'+
+        '<span style="font-size:1rem">'+(done?'✅':'❌')+'</span>'+
+        '<span style="font-size:.85rem;color:'+(done?'#27ae60':'#c0392b')+'">'+partTitle+'</span>'+
+      '</div>';
+    }
+
+    return '<div style="border:1px solid #eee;border-radius:10px;padding:.8rem .9rem">'+
+      '<div style="font-weight:700;color:#6f42c1;margin-bottom:.5rem">🎬 '+(v.title||'')+'</div>'+
+      partsHtml+
+    '</div>';
+  }).join('');
+
+  document.getElementById('watchDetailsList').innerHTML = html;
+}
+
+
+function openTaskDetails(code, studentName){
+  document.getElementById('taskDetailsStudentName').textContent = '👤 '+studentName+' ('+code+')';
+  var tasks = window._progressTasks || [];
+  document.getElementById('taskDetailsModal').style.display = 'flex';
+
+  db.ref('studentProgress/'+code+'/'+currentReviewCode+'/tasks').once('value', function(snap){
+    var doneTasks = snap.val() || {};
+    // doneTasks may be flat {0:true,1:true,...} or day-based {d0:{0:true,...}, d1:{...}}
+    var html = '';
+    if(tasks.length && tasks[0] && typeof tasks[0]==='object' && 'tasks' in tasks[0]){
+      // day-based display
+      var flatIdx = 0;
+      html = tasks.map(function(day, di){
+        var dayDone = doneTasks['d'+di] || {};
+        var dayHtml = (day.tasks||[]).map(function(t, ti){
+          var done = dayDone[ti]===true;
+          return '<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;border-radius:7px;background:'+(done?'#e8f5e9':'#fde8e8')+';margin-bottom:.3rem">'+
+            '<span>'+(done?'✅':'❌')+'</span>'+
+            '<span style="font-size:.88rem;color:'+(done?'#27ae60':'#c0392b')+'">'+(t.text||'مهمة '+(ti+1))+'</span>'+
+          '</div>';
+        }).join('');
+        return '<div style="margin-bottom:.6rem">'+
+          '<div style="font-weight:700;color:#e67e22;font-size:.85rem;margin-bottom:.3rem">📅 '+(day.label||'اليوم '+(di+1))+(day.title?' — '+day.title:'')+'</div>'+
+          dayHtml+
+        '</div>';
+      }).join('');
+    } else {
+      // flat fallback
+      html = tasks.map(function(t, i){
+        var done = doneTasks[i] === true;
+        return '<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .7rem;border-radius:8px;background:'+(done?'#e8f5e9':'#fde8e8')+';margin-bottom:.35rem">'+
+          '<span style="font-size:1.1rem">'+(done?'✅':'❌')+'</span>'+
+          '<span style="font-size:.9rem;color:'+(done?'#27ae60':'#c0392b')+'">'+(t.text||t||'مهمة '+(i+1))+'</span>'+
+        '</div>';
+      }).join('');
+    }
+    document.getElementById('taskDetailsList').innerHTML = html || '<p style="color:#aaa">لا توجد مهام</p>';
+  });
+}
+
+function openAddReviewCode(){
+  document.getElementById('rcCode').value='';document.getElementById('rcDesc').value='';
+  document.getElementById('rcError').textContent='';
+  document.getElementById('reviewCodeModal').style.display='flex';
+}
+function closeReviewCodeModal(){document.getElementById('reviewCodeModal').style.display='none';}
+function saveReviewCode(){
+  var code=document.getElementById('rcCode').value.trim().toUpperCase();
+  var desc=document.getElementById('rcDesc').value.trim();
+  if(!code){document.getElementById('rcError').textContent='⚠️ الكود مطلوب!';return;}
+  if(/[.#$\/\[\]]/.test(code)){
+    document.getElementById('rcError').textContent='⚠️ الكود مينفعش يحتوي على أي من الرموز دي: . # $ / [ ] — جرب مثلاً "2SEC" بدل "2.SEC"';
+    return;
+  }
+  var rcId='rc_'+Date.now();
+  // تحقق إن الكود ده مش مستخدم قبل كده في review تاني (reviewIndex فريد لكل كود)
+  db.ref('reviewIndex/'+code).once('value').then(function(existing){
+    if(existing.exists()){
+      document.getElementById('rcError').textContent='⚠️ الكود ده مستخدم قبل كده في Review Code تاني!';
+      return;
+    }
+    var updates={};
+    updates['reviews/'+rcId]={code:code,desc:desc};
+    updates['reviewIndex/'+code]=rcId;
+    return db.ref().update(updates).then(function(){
+      closeReviewCodeModal();showToast('✅ تم الحفظ!');loadReviewCodes();
+    });
+  }).catch(function(e){document.getElementById('rcError').textContent='❌ '+e.message;});
+}
+function deleteReviewCode(rcId){
+  if(!confirm('هتحذف الـ Review Code ده وكل فيديوهاته؟'))return;
+
+  db.ref('reviews/'+rcId).once('value').then(function(snap){
+    var rc=snap.val()||{};
+    var updates={};
+    updates['reviews/'+rcId]=null;
+    if(rc.code && !/[.#$\/\[\]]/.test(rc.code)) updates['reviewIndex/'+rc.code]=null;
+    return db.ref().update(updates);
+  }).then(function(){
+    document.getElementById('reviewVideosSection').style.display='none';
+    showToast('🗑️ تم الحذف!','warn');loadReviewCodes();
+  });
+}
+function editReviewCodeValue(rcId,oldCode){
+  var newCode=prompt('اكتب الكود الجديد (من غير مسافات أو رموز زي . # $ / [ ]):', oldCode||'');
+  if(newCode===null) return;
+  newCode=newCode.trim().toUpperCase();
+  if(!newCode){ showToast('الكود مينفعش يبقى فاضي','warn'); return; }
+  if(/[.#$\/\[\]]/.test(newCode)){ showToast('⚠️ لسه فيه رمز ممنوع (. # $ / [ ])، شيله وحاول تاني','warn'); return; }
+  db.ref('reviewIndex/'+newCode).once('value').then(function(existing){
+    if(existing.exists() && existing.val()!==rcId){
+      showToast('⚠️ الكود ده مستخدم قبل كده في Review Code تاني!','warn');
+      return;
+    }
+    var updates={};
+    updates['reviews/'+rcId+'/code']=newCode;
+    updates['reviewIndex/'+newCode]=rcId;
+    if(oldCode && !/[.#$\/\[\]]/.test(oldCode) && oldCode!==newCode) updates['reviewIndex/'+oldCode]=null;
+    return db.ref().update(updates).then(function(){
+      showToast('✅ اتصلح! الكود بقى: '+newCode);loadReviewCodes();
+    });
+  }).catch(function(e){ showToast('❌ '+e.message,'warn'); });
+}
+function openManageAccessCodes(){
+  if(!currentReviewCode)return;
+  document.getElementById('acError').textContent='';
+  document.getElementById('acCodesContainer').innerHTML='<p style="color:#aaa;font-size:.85rem;text-align:center">⏳ جاري التحميل...</p>';
+  document.getElementById('accessCodesModal').style.display='flex';
+  db.ref('reviews/'+currentReviewCode+'/accessCodes').once('value',function(snap){
+    var data=snap.val()||{};
+    var codes=Object.values(data);
+    document.getElementById('acCodesContainer').innerHTML='';
+    if(!codes.length){
+      addAcCodeRow('','');
+    } else {
+      // جيب أسماء الطلاب المرتبطة بالأكواد دي
+      db.ref('students').once('value',function(sSnap){
+        var allStudents=sSnap.val()||{};
+        document.getElementById('acCodesContainer').innerHTML='';
+        codes.forEach(function(code){
+          var name=(allStudents[code]&&allStudents[code].name)||'';
+          addAcCodeRow(code,name);
+        });
+      });
+    }
+  });
+}
+function addAcCodeRow(codeVal,nameVal){
+  var container=document.getElementById('acCodesContainer');
+  var row=document.createElement('div');
+  row.className='ac-row';
+  row.innerHTML=
+    '<input type="text" class="ac-code-input" placeholder="الكود" dir="ltr" value="'+(codeVal||'')+'">'+
+    '<input type="text" class="ac-name-input" placeholder="اسم الطالب (اختياري)" value="'+(nameVal||'')+'">'+
+    '<button type="button" class="btn-remove-ac" onclick="this.closest(\'.ac-row\').remove()" title="حذف"><i class="fas fa-times"></i></button>';
+  container.appendChild(row);
+}
+function closeAccessCodesModal(){document.getElementById('accessCodesModal').style.display='none';}
+function saveAccessCodes(){
+  var rows=document.querySelectorAll('#acCodesContainer .ac-row');
+  var entries=[];
+  rows.forEach(function(row){
+    var code=row.querySelector('.ac-code-input').value.trim();
+    var name=row.querySelector('.ac-name-input').value.trim();
+    if(code) entries.push({code:code,name:name});
+  });
+  if(!entries.length){document.getElementById('acError').textContent='⚠️ حط كود واحد على الأقل!';return;}
+  var badCode=entries.find(function(e){return /[.#$\/\[\]]/.test(e.code);});
+  if(badCode){document.getElementById('acError').textContent='⚠️ الكود "'+badCode.code+'" فيه رمز ممنوع (. # $ / [ ])!';return;}
+
+  // اقرأ الأكواد القديمة الأول عشان نمسح الـ index بتاعها قبل ما نكتب الجديد
+  db.ref('reviews/'+currentReviewCode+'/accessCodes').once('value').then(function(oldSnap){
+    var oldCodes=Object.values(oldSnap.val()||{});
+    var updates={};
+    oldCodes.forEach(function(c){ if(c && !/[.#$\/\[\]]/.test(c)) updates['accessCodeIndex/'+c]=null; });
+    var obj={};entries.forEach(function(e,i){obj['c'+i]=e.code;});
+    updates['reviews/'+currentReviewCode+'/accessCodes']=obj;
+    entries.forEach(function(e){ updates['accessCodeIndex/'+e.code]=currentReviewCode; });
+    entries.forEach(function(e){ if(e.name) updates['students/'+e.code+'/name']=e.name; });
+    return db.ref().update(updates);
+  }).then(function(){
+    closeAccessCodesModal();showToast('✅ تم حفظ '+entries.length+' كود!');
+  }).catch(function(e){document.getElementById('acError').textContent='❌ '+e.message;});
+}
+function openAddReviewVideo(){
+  saveTarget='review';editingReviewVid=null;
+  document.getElementById('modalTitle').textContent='➕ فيديو مراجعة جديد';
+  document.getElementById('vTitle').value='';
+  document.getElementById('vOrder').value=nextRevOrder();
+  document.getElementById('formError').textContent='';
+  document.getElementById('partsContainer').innerHTML='';
+  addPartRow('');
+  document.getElementById('videoModal').style.display='flex';
+}
+function nextRevOrder(){var o=Object.values(reviewVideos).map(function(v){return v.order||0;});return o.length?Math.max.apply(null,o)+1:1;}
+function editRev(vid){
+  var v=reviewVideos[vid];if(!v)return;
+  saveTarget='review';editingReviewVid=vid;
+  document.getElementById('modalTitle').textContent='✏️ تعديل فيديو المراجعة';
+  document.getElementById('vTitle').value=v.title||'';
+  document.getElementById('vOrder').value=v.order||1;
+  document.getElementById('formError').textContent='';
+  initPartsFromData(v);
+  document.getElementById('videoModal').style.display='flex';
+}
+function moveRev(vid,dir){
+  var entries=Object.entries(reviewVideos).sort(function(a,b){return(a[1].order||0)-(b[1].order||0);});
+  var idx=entries.findIndex(function(e){return e[0]===vid;});
+  var si=idx+dir;if(si<0||si>=entries.length)return;
+  var base='reviews/'+currentReviewCode+'/videos';
+  db.ref(base+'/'+entries[idx][0]+'/order').set(entries[si][1].order||0);
+  db.ref(base+'/'+entries[si][0]+'/order').set(entries[idx][1].order||0);
+  db.ref(base).once('value',function(s){reviewVideos=s.val()||{};renderReviewTable();});
+}
+function deleteRev(vid){
+  var v=reviewVideos[vid];if(!v)return;
+  if(!confirm('هتحذف: "'+v.title+'"؟'))return;
+  db.ref('reviews/'+currentReviewCode+'/videos/'+vid).remove().then(function(){
+    delete reviewVideos[vid];renderReviewTable();showToast('🗑️ تم الحذف!','warn');
+  });
+}
+
+// ===================== HOMEWORK VIDEO ACCESS CODES =====================
+var editingHwAccessVid=null;
+function openHwAccessCodes(vid){
+  editingHwAccessVid=vid;
+  var v=allVideos[vid];if(!v)return;
+  document.getElementById('hwAcVideoTitle').textContent='📹 '+v.title;
+  document.getElementById('hwAcError').textContent='';
+  db.ref('videos/'+currentCode+'/ch'+currentChapter+'/'+vid+'/accessCodes').once('value',function(snap){
+    var data=snap.val()||{};
+    document.getElementById('hwAccessCodesInput').value=Object.values(data).join('\n');
+    document.getElementById('hwAccessCodesModal').style.display='flex';
+  });
+}
+function closeHwAccessCodesModal(){document.getElementById('hwAccessCodesModal').style.display='none';editingHwAccessVid=null;}
+function saveHwAccessCodes(){
+  var raw=document.getElementById('hwAccessCodesInput').value;
+  var codes=raw.split('\n').map(function(c){return c.trim();}).filter(Boolean);
+  var ref=db.ref('videos/'+currentCode+'/ch'+currentChapter+'/'+editingHwAccessVid+'/accessCodes');
+  if(!codes.length){
+    ref.remove().then(function(){
+      if(allVideos[editingHwAccessVid])delete allVideos[editingHwAccessVid].accessCodes;
+      closeHwAccessCodesModal();renderHwTable();showToast('✅ الفيديو هيظهر لكل الطلاب!');
+    }).catch(function(e){document.getElementById('hwAcError').textContent='❌ '+e.message;});
+    return;
+  }
+  var obj={};codes.forEach(function(c,i){obj['c'+i]=c;});
+  ref.set(obj).then(function(){
+    allVideos[editingHwAccessVid].accessCodes=obj;
+    closeHwAccessCodesModal();renderHwTable();showToast('✅ تم حفظ '+codes.length+' كود!');
+  }).catch(function(e){document.getElementById('hwAcError').textContent='❌ '+e.message;});
+}
+
+// ===================== SHARED VIDEO MODAL =====================
+function closeVideoModal(){document.getElementById('videoModal').style.display='none';saveTarget='homework';}
+
+function saveVideo(){
+  var title=document.getElementById('vTitle').value.trim();
+  var order=parseInt(document.getElementById('vOrder').value)||1;
+  var errEl=document.getElementById('formError');
+  if(!title){errEl.textContent='⚠️ العنوان مطلوب!';return;}
+
+  var rawUrls = getPartUrls();
+  var rawTitles = getPartTitles();
+  var validParts = [];
+  rawUrls.forEach(function(u, i){ if(u.length > 0) validParts.push({url:u, title:rawTitles[i]||''}); });
+  if(!validParts.length){errEl.textContent='⚠️ لازم تحط رابط الجزء الأول على الأقل!';return;}
+
+  // بناء data object: url1, title1, url2, title2 ...
+  var data = { title:title, order:order, updatedAt:Date.now() };
+  validParts.forEach(function(p, i){
+    data['url'+(i+1)] = toEmbed(p.url);
+    if(p.title) data['title'+(i+1)] = p.title;
+  });
+
+  if(saveTarget==='review'){
+    var vid=editingReviewVid||('v'+Date.now());
+    db.ref('reviews/'+currentReviewCode+'/videos/'+vid).set(data).then(function(){
+      reviewVideos[vid]=data;closeVideoModal();renderReviewTable();
+      showToast(editingReviewVid?'✅ تم التحديث!':'✅ تم إضافة الفيديو!');
+    }).catch(function(e){errEl.textContent='❌ '+e.message;});
+  } else if(saveTarget==='public'){
+    var vid3=editingPublicVid||('v'+Date.now());
+    db.ref('publicVideos/'+vid3).set(data).then(function(){
+      publicVideos[vid3]=data;closeVideoModal();renderPublicTable();
+      showToast(editingPublicVid?'✅ تم التحديث!':'✅ تم إضافة الفيديو!');
+    }).catch(function(e){errEl.textContent='❌ '+e.message;});
+  } else {
+    var vid2=editingId||('v'+Date.now());
+    db.ref('videos/'+currentCode+'/ch'+currentChapter+'/'+vid2).set(data).then(function(){
+      closeVideoModal();showToast(editingId?'✅ تم التحديث!':'✅ تم إضافة الفيديو!');
+    }).catch(function(e){errEl.textContent='❌ '+e.message;});
+  }
+}
+</script>
+</body>
+</html>
